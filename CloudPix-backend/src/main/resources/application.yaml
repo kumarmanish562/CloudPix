@@ -1,3 +1,16 @@
 spring:
   application:
     name: CloudPix-backend
+
+  datasource:
+    url: jdbc:postgresql://localhost:5436/cloudpix
+    username: postgres
+    password: postgres
+    driver-class-name: org.postgresql.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: validate
+
+  flyway:
+    enabled: true
