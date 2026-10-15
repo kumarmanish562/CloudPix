@@ -1,4 +1,3 @@
-
 import type { PhotoStatus } from "@/lib/api";
 
 export const authKeys = {
