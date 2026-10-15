@@ -3,6 +3,7 @@ package com.CoudPix.CloudPix_backend.security;
 import java.util.UUID;
 
 import com.CoudPix.CloudPix_backend.services.JwtService;
+import com.CoudPix.CloudPix_backend.services.UserService;
 import com.CoudPix.CloudPix_backend.services.impl.UserDetailsServiceImpl;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.context.SecurityContextHolder;

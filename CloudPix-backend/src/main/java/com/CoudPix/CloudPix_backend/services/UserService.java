@@ -1,4 +1,4 @@
-package com.CoudPix.CloudPix_backend.security;
+package com.CoudPix.CloudPix_backend.services;
 
 import java.util.Optional;
 import java.util.UUID;

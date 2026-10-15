@@ -1,7 +1,5 @@
 package com.CoudPix.CloudPix_backend.services;
 
-
-
 import com.CoudPix.CloudPix_backend.config.JwtProperties;
 import com.CoudPix.CloudPix_backend.domain.User;
 import io.jsonwebtoken.Claims;
@@ -10,7 +8,6 @@ import io.jsonwebtoken.security.Keys;
 
 
 import org.springframework.stereotype.Service;
-
 
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
