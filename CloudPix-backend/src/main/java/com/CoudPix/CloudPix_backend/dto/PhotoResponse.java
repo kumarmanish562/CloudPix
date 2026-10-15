@@ -1,4 +1,7 @@
-package com.CoudPix.CloudPix_backend.domain;
+package com.CoudPix.CloudPix_backend.dto;
+
+import com.CoudPix.CloudPix_backend.domain.AiTransformType;
+import com.CoudPix.CloudPix_backend.domain.PhotoStatus;
 
 import java.time.Instant;
 import java.util.UUID;

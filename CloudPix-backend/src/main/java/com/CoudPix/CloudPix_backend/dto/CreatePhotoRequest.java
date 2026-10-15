@@ -1,4 +1,4 @@
-package com.CoudPix.CloudPix_backend.domain;
+package com.CoudPix.CloudPix_backend.dto;
 
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
