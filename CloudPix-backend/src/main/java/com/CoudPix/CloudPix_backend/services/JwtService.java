@@ -55,14 +55,34 @@ public class JwtService {
         return UUID.fromString(claims.getSubject());
     }
 
+
     public boolean isTokenValid(String token) {
         try {
             Claims claims = parseClaims(token);
-            return claims.getExpiration().after(new Date()) && "access".equals(claims.get("type", String.class));
-        } catch (Exception ex) {
-            return false;
+
+            if (claims.getExpiration() == null
+                    || !claims.getExpiration().after(new Date())) {
+                System.err.println("JWT rejected: expired or missing expiration");
+                return false;
+            }
+
+            if (!"access".equals(claims.get("type", String.class))) {
+                System.err.println("JWT rejected: token type is not access");
+                return false;
+            }
+
+            return true;
+        } catch (io.jsonwebtoken.ExpiredJwtException ex) {
+            System.err.println("JWT rejected: expired");
+        } catch (io.jsonwebtoken.security.SignatureException ex) {
+            System.err.println("JWT rejected: signature verification failed");
+        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException ex) {
+            System.err.println("JWT rejected: malformed or invalid token");
         }
+
+        return false;
     }
+
 
     private Claims parseClaims(String token) {
         return Jwts.parser()

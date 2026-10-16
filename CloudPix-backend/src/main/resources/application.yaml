@@ -25,7 +25,7 @@ app:
     allowed-origins: http://localhost:3000
 
   jwt:
-    secret: ${JWT_SECRET:your-256-bit-secret}
+    secret: ${JWT_SECRET}
     access-expiration-ms: 900000
     refresh-expiration-ms: 604800000
 
