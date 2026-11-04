@@ -19,7 +19,7 @@ public interface AlbumRepository extends JpaRepository<Album, UUID> {
 
     @Query("""
             SELECT COUNT(ap) FROM AlbumPhoto ap
-            WHERE ap.album.id = :albumId
+            WHERE ap.album.id = :albumId AND ap.photo.status = 'ACTIVE'
             """)
     long countPhotosByAlbumId(@Param("albumId") UUID albumId);
 }

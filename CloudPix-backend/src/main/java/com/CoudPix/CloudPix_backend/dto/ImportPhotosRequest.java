@@ -6,6 +6,6 @@ import java.util.List;
 import jakarta.validation.constraints.NotEmpty;
 
 public record ImportPhotosRequest(
-        @NotEmpty List<String> imagekitFileIds
+        @NotEmpty @jakarta.validation.constraints.Size(max = 100) List<@jakarta.validation.constraints.NotBlank String> imagekitFileIds
 ) {
 }

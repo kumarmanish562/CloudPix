@@ -15,6 +15,8 @@ import {
 } from "@/components/ui/empty";
 import { Spinner } from "@/components/ui/spinner";
 import { useAlbum, useAlbumPhotos, useDeleteAlbum } from "@/hooks/use-albums";
+import { ShareAlbumDialog } from "@/components/albums/share-album-dialog";
+import { DownloadButton } from "@/components/photos/download-button";
 
 export default function AlbumDetailPage() {
   const params = useParams<{ id: string }>();
@@ -55,6 +57,9 @@ export default function AlbumDetailPage() {
           </div>
         </div>
 
+        <div className="flex flex-wrap gap-2">
+        <ShareAlbumDialog albumId={albumId} />
+        <DownloadButton path={`/albums/${albumId}/download`} filename={`${album.title}.zip`} label="Download ZIP" />
         <Button
           variant="destructive"
           onClick={() =>
@@ -76,6 +81,7 @@ export default function AlbumDetailPage() {
             </>
           )}
         </Button>
+        </div>
       </div>
 
       {photos.length === 0 && !isLoading ? (

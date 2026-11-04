@@ -104,15 +104,17 @@ public class AlbumService {
     @Transactional
     public void deleteAlbum(User user, UUID albumId) {
         Album album = getOwnedAlbum(user, albumId);
+        albumPhotoRepository.deleteByAlbumId(albumId);
         albumRepository.delete(album);
     }
 
     @Transactional
     public void addPhotosToAlbum(User user, UUID albumId, AddPhotosToAlbumRequest request) {
         Album album = getOwnedAlbum(user, albumId);
-        List<Photo> photos = photoRepository.findByIdInAndUserId(request.photoIds(), user.getId());
+        var uniqueIds = request.photoIds().stream().distinct().toList();
+        List<Photo> photos = photoRepository.findByIdInAndUserId(uniqueIds, user.getId());
 
-        if (photos.size() != request.photoIds().size()) {
+        if (photos.size() != uniqueIds.size()) {
             throw new ResourceNotFoundException("One or more photos were not found");
         }
 
@@ -135,6 +137,7 @@ public class AlbumService {
         }
 
         albumPhotoRepository.saveAll(albumPhotos);
+        album.setUpdatedAt(java.time.Instant.now());
 
         if (album.getCoverPhoto() == null && !photos.isEmpty()) {
             album.setCoverPhoto(photos.get(0));
@@ -144,11 +147,13 @@ public class AlbumService {
 
     @Transactional
     public void removePhotoFromAlbum(User user, UUID albumId, UUID photoId) {
-        getOwnedAlbum(user, albumId);
+        Album album = getOwnedAlbum(user, albumId);
         if (!albumPhotoRepository.existsByAlbumIdAndPhotoId(albumId, photoId)) {
             throw new ResourceNotFoundException("Photo not found in album");
         }
         albumPhotoRepository.deleteByAlbumIdAndPhotoId(albumId, photoId);
+        if (album.getCoverPhoto() != null && album.getCoverPhoto().getId().equals(photoId)) album.setCoverPhoto(null);
+        album.setUpdatedAt(java.time.Instant.now());
     }
 
     private Album getOwnedAlbum(User user, UUID albumId) {
@@ -158,6 +163,7 @@ public class AlbumService {
 
     private AlbumResponse toAlbumResponse(Album album, long photoCount) {
         Photo coverPhoto = album.getCoverPhoto();
+        if (coverPhoto != null && coverPhoto.getStatus() != PhotoStatus.ACTIVE) coverPhoto = null;
         return new AlbumResponse(
                 album.getId(),
                 album.getTitle(),

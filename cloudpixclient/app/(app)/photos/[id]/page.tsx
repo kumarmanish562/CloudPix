@@ -5,6 +5,7 @@ import { useParams } from "next/navigation";
 import { ArrowLeft } from "lucide-react";
 import { PhotoAiEditor } from "@/components/photos/photo-ai-editor";
 import { usePhoto } from "@/hooks/use-ai";
+import { PhotoMetadataPanel } from "@/components/photos/photo-metadata-panel";
 
 export default function PhotoDetailPage() {
   const params = useParams<{ id: string }>();
@@ -37,7 +38,8 @@ export default function PhotoDetailPage() {
         </div>
       </div>
 
-      <PhotoAiEditor photo={photo} />
+      <PhotoMetadataPanel key={photo.id} photo={photo} />
+      <PhotoAiEditor key={photo.id} photo={photo} />
     </div>
   );
 }

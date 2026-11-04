@@ -13,6 +13,7 @@ import {
 } from "@/components/ui/sheet";
 import { useCurrentUser } from "@/hooks/use-auth";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { UploadQueue } from "@/components/photos/upload-queue";
 
 type AppShellProps = {
   children: React.ReactNode;
@@ -25,7 +26,7 @@ export function AppShell({ children }: AppShellProps) {
 
   return (
     <div className="min-h-screen bg-background">
-      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-sidebar-border bg-sidebar md:block">
+      <aside className="fixed inset-y-0 left-0 z-30 hidden w-64 border-r border-sidebar-border/80 bg-sidebar md:block">
         <SidebarNav user={user} />
       </aside>
 
@@ -40,7 +41,7 @@ export function AppShell({ children }: AppShellProps) {
 
       <div className="flex min-h-screen flex-col md:pl-64">
         {isMobile && (
-          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/60 bg-background/90 px-4 py-3 backdrop-blur-sm">
+          <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-border/70 bg-background/90 px-4 py-3 backdrop-blur-xl">
             <Button
               variant="outline"
               size="icon-sm"
@@ -50,7 +51,7 @@ export function AppShell({ children }: AppShellProps) {
               <Menu className="size-4" />
             </Button>
             <div className="min-w-0">
-              <p className="truncate text-sm font-medium text-foreground">Google Photos</p>
+              <p className="truncate text-sm font-semibold tracking-tight text-foreground">CloudPix</p>
               {user && (
                 <p className="truncate text-xs text-muted-foreground">{user.displayName}</p>
               )}
@@ -58,7 +59,8 @@ export function AppShell({ children }: AppShellProps) {
           </header>
         )}
 
-        <main className="flex-1 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">{children}</main>
+        <main className="mx-auto w-full max-w-[1600px] flex-1 px-4 py-6 sm:px-7 sm:py-8 lg:px-10 lg:py-10">{children}</main>
+        <UploadQueue />
       </div>
     </div>
   );

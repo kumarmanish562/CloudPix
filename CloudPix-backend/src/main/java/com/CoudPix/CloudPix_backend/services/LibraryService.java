@@ -3,7 +3,7 @@ package com.CoudPix.CloudPix_backend.services;
 import java.util.ArrayList;
 import java.util.List;
 
-import com.CoudPix.CloudPix_backend.domain.PhotoStatus;
+import com.CoudPix.CloudPix_backend.dto.PhotoStatus;
 import com.CoudPix.CloudPix_backend.domain.User;
 import com.CoudPix.CloudPix_backend.dto.*;
 import com.CoudPix.CloudPix_backend.exception.ResourceNotFoundException;

@@ -9,6 +9,9 @@ import {
   Images,
   LogOut,
   Trash2,
+  Heart,
+  History,
+  Copy,
 } from "lucide-react";
 import { useLogout } from "@/hooks/use-auth";
 import { cn } from "@/lib/utils";
@@ -21,6 +24,9 @@ import Image from "next/image";
 const navItems = [
   { href: "/photos", label: "Photos", icon: Images },
   { href: "/albums", label: "Albums", icon: FolderOpen },
+  { href: "/favorites", label: "Favorites", icon: Heart },
+  { href: "/memories", label: "Memories", icon: History },
+  { href: "/duplicates", label: "Duplicates", icon: Copy },
   { href: "/archive", label: "Archive", icon: Archive },
   { href: "/trash", label: "Trash", icon: Trash2 },
 ];
@@ -42,8 +48,8 @@ export function SidebarNav({ user, onNavigate }: SidebarNavProps) {
             <Image src="/logo2.svg" alt="logo" width={36} height={36} className="size-9 h-auto w-auto" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold text-sidebar-foreground">Google Photos</p>
-            <p className="text-xs text-muted-foreground">Clone</p>
+            <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">CloudPix</p>
+            <p className="text-xs text-muted-foreground">Your photo space</p>
           </div>
         </div>
       </div>

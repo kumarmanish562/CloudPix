@@ -6,9 +6,7 @@ import java.util.Set;
 import java.util.UUID;
 
 import com.CoudPix.CloudPix_backend.domain.*;
-import com.CoudPix.CloudPix_backend.dto.CreatePhotoRequest;
-import com.CoudPix.CloudPix_backend.dto.PageResponse;
-import com.CoudPix.CloudPix_backend.dto.PhotoResponse;
+import com.CoudPix.CloudPix_backend.dto.*;
 import com.CoudPix.CloudPix_backend.exception.BadRequestException;
 import com.CoudPix.CloudPix_backend.exception.ResourceConflictException;
 import com.CoudPix.CloudPix_backend.exception.ResourceNotFoundException;
@@ -86,7 +84,28 @@ public class PhotoService {
 
     @Transactional
     public PhotoResponse uploadPhoto(User user, MultipartFile file) {
+        return uploadPhoto(user, file, false);
+    }
+
+    @Transactional
+    public PhotoResponse uploadPhoto(User user, MultipartFile file, boolean allowDuplicate) {
         validateUpload(file);
+
+        String hash;
+        try (var input = file.getInputStream()) {
+            var digest = java.security.MessageDigest.getInstance("SHA-256");
+            byte[] buffer = new byte[8192];
+            int read;
+            while ((read = input.read(buffer)) != -1) digest.update(buffer, 0, read);
+            hash = java.util.HexFormat.of().formatHex(digest.digest());
+        } catch (java.io.IOException | java.security.NoSuchAlgorithmException ex) {
+            throw new BadRequestException("Could not read uploaded image");
+        }
+        // Serialize uploads per owner so simultaneous clients cannot bypass duplicate detection.
+        photoRepository.lockUploadOwner(user.getId());
+        if (!allowDuplicate && !photoRepository.findByUserIdAndContentHash(user.getId(), hash).isEmpty()) {
+            throw new ResourceConflictException("This image is already in your library (including archive or trash)");
+        }
 
         FileUploadResponse uploadResponse = imageKitService.uploadPhoto(user, file);
 
@@ -107,6 +126,8 @@ public class PhotoService {
                 uploadResponse.height().map(Double::intValue).orElse(null));
 
         PhotoResponse photo = createPhoto(user, request);
+        Photo saved = photoRepository.findById(photo.id()).orElseThrow();
+        saved.setContentHash(hash);
 
         if (filePath != null && (photo.thumbnailUrl() == null || photo.thumbnailUrl().isBlank())) {
             Photo savedPhoto = photoRepository.findById(photo.id())
@@ -115,7 +136,7 @@ public class PhotoService {
             return toPhotoResponse(photoRepository.save(savedPhoto));
         }
 
-        return photo;
+        return toPhotoResponse(saved);
     }
 
     @Transactional
@@ -165,10 +186,7 @@ public class PhotoService {
 
     @Transactional
     public void restorePhotos(User user, List<UUID> photoIds) {
-        List<Photo> photos = photoRepository.findByIdInAndUserId(photoIds, user.getId());
-        if (photos.size() != photoIds.size()) {
-            throw new ResourceNotFoundException("One or more photos were not found");
-        }
+        List<Photo> photos = loadOwnedPhotos(user, photoIds);
 
         for (Photo photo : photos) {
             if (photo.getStatus() == PhotoStatus.ACTIVE) {
@@ -181,15 +199,12 @@ public class PhotoService {
 
     @Transactional
     public void permanentlyDeletePhotos(User user, List<UUID> photoIds) {
-        List<Photo> photos = photoRepository.findByIdInAndUserId(photoIds, user.getId());
-        if (photos.size() != photoIds.size()) {
-            throw new ResourceNotFoundException("One or more photos were not found");
+        List<Photo> photos = loadOwnedPhotos(user, photoIds);
+        if (photos.stream().anyMatch(photo -> photo.getStatus() != PhotoStatus.TRASH)) {
+            throw new BadRequestException("Only photos in trash can be permanently deleted");
         }
 
         for (Photo photo : photos) {
-            if (photo.getStatus() != PhotoStatus.TRASH) {
-                throw new BadRequestException("Only photos in trash can be permanently deleted");
-            }
             imageKitService.deleteFile(photo.getImagekitFileId());
             photoRepository.delete(photo);
         }
@@ -209,6 +224,7 @@ public class PhotoService {
         List<Photo> photos = loadOwnedPhotos(user, photoIds);
 
         for (Photo photo : photos) {
+            if (photo.getStatus() == newStatus) continue;
             if (requiredCurrentStatus != null && photo.getStatus() != requiredCurrentStatus) {
                 throw new BadRequestException("Photo must be " + requiredCurrentStatus.name().toLowerCase());
             }
@@ -218,8 +234,9 @@ public class PhotoService {
     }
 
     private List<Photo> loadOwnedPhotos(User user, List<UUID> photoIds) {
-        List<Photo> photos = photoRepository.findByIdInAndUserId(photoIds, user.getId());
-        if (photos.size() != photoIds.size()) {
+        List<UUID> uniqueIds = photoIds.stream().distinct().toList();
+        List<Photo> photos = photoRepository.findByIdInAndUserId(uniqueIds, user.getId());
+        if (photos.size() != uniqueIds.size()) {
             throw new ResourceNotFoundException("One or more photos were not found");
         }
         return photos;
@@ -228,6 +245,9 @@ public class PhotoService {
     private void validateUpload(MultipartFile file) {
         if (file.isEmpty()) {
             throw new BadRequestException("Uploaded file is empty");
+        }
+        if (file.getSize() > 25L * 1024 * 1024) {
+            throw new BadRequestException("Images must be 25 MB or smaller");
         }
 
         String contentType = file.getContentType();
@@ -261,7 +281,10 @@ public class PhotoService {
                 photo.getCreatedAt(),
                 photo.getDeletedAt(),
                 photo.getParentPhotoId(),
-                photo.getAiTransformType());
+                photo.getAiTransformType(),
+                photo.isFavorite(),
+                Set.copyOf(photo.getTags()),
+                photo.getContentHash());
     }
 
 }

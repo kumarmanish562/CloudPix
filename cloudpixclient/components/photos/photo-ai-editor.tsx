@@ -1,6 +1,7 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useState } from "react";
+import { useRouter } from "next/navigation";
 import Image from "next/image";
 import { Sparkles, Wand2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -74,16 +75,15 @@ export function PhotoAiEditor({ photo }: PhotoAiEditorProps) {
   const [focusObject, setFocusObject] = useState("");
   const [width, setWidth] = useState(String(photo.width ?? 1200));
   const [height, setHeight] = useState(String(photo.height ?? 800));
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [preview, setPreview] = useState<{ url: string; key: string } | null>(null);
+  const previewKey = JSON.stringify([selectedType, prompt, focusObject, width, height, photo.id]);
+  const previewUrl = preview?.key === previewKey ? preview.url : null;
+  const router = useRouter();
 
   const previewMutation = useAiPreview(photo.id);
   const applyMutation = useAiApply(photo.id);
 
   const selectedTransform = TRANSFORMS.find((item) => item.type === selectedType)!;
-
-  useEffect(() => {
-    setPreviewUrl(null);
-  }, [selectedType, prompt, focusObject, width, height, photo.id]);
 
   function buildRequest(): AiTransformRequest {
     return {
@@ -96,13 +96,17 @@ export function PhotoAiEditor({ photo }: PhotoAiEditorProps) {
   }
 
   async function handlePreview() {
-    const response = await previewMutation.mutateAsync(buildRequest());
-    setPreviewUrl(response.previewUrl);
+    try {
+      const response = await previewMutation.mutateAsync(buildRequest());
+      setPreview({ url: response.previewUrl, key: previewKey });
+    } catch { /* The mutation displays the error. */ }
   }
 
   async function handleApply() {
-    const saved = await applyMutation.mutateAsync(buildRequest());
-    window.location.href = `/photos/${saved.id}`;
+    try {
+      const saved = await applyMutation.mutateAsync(buildRequest());
+      router.push(`/photos/${saved.id}`);
+    } catch { /* The mutation displays the error. */ }
   }
 
   return (

@@ -7,6 +7,6 @@ import java.util.List;
 import java.util.UUID;
 
 public record BulkPhotoActionRequest(
-        @NotEmpty List<UUID> photoIds
+        @NotEmpty @jakarta.validation.constraints.Size(max = 100) List<@jakarta.validation.constraints.NotNull UUID> photoIds
 ) {
 }

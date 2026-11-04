@@ -2,7 +2,8 @@
 
 import Link from "next/link";
 import Image from "next/image";
-import { Trash2 } from "lucide-react";
+import { Trash2, Heart } from "lucide-react";
+import { useUpdatePhoto } from "@/hooks/use-photos";
 import { AspectRatio } from "@/components/ui/aspect-ratio";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -29,6 +30,7 @@ export function PhotoGrid({
   albumId,
 }: PhotoGridProps) {
   const trashMutation = useTrashPhotos();
+  const updateMutation = useUpdatePhoto();
   const removeFromAlbumMutation = useRemovePhotoFromAlbum(albumId ?? "");
   const isSelectMode = usePhotoSelectionStore((state) => state.isSelectMode);
   const selectedIds = usePhotoSelectionStore((state) => state.selectedIds);
@@ -36,7 +38,7 @@ export function PhotoGrid({
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
         {Array.from({ length: 12 }).map((_, index) => (
           <Skeleton key={index} className="aspect-square rounded-xl" />
         ))}
@@ -45,7 +47,7 @@ export function PhotoGrid({
   }
 
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6">
+    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 md:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6">
       {photos.map((photo) => {
         const isSelected = selectedIds.includes(photo.id);
 
@@ -53,8 +55,8 @@ export function PhotoGrid({
           <article
             key={photo.id}
             className={cn(
-              "group relative overflow-hidden rounded-xl border bg-card/40 transition-colors",
-              isSelected ? "border-primary ring-2 ring-primary/40" : "border-border/60",
+              "group relative overflow-hidden rounded-2xl bg-card shadow-sm ring-1 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg",
+              isSelected ? "ring-2 ring-primary" : "ring-black/5 dark:ring-white/10",
             )}
           >
             <AspectRatio ratio={1}>
@@ -62,21 +64,31 @@ export function PhotoGrid({
                 src={photo.thumbnailUrl ?? photo.url}
                 alt={photo.fileName}
                 fill
-                sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 16vw"
-                className="object-cover transition-transform duration-300 group-hover:scale-105"
+                sizes="(max-width: 640px) 50vw, (max-width: 768px) 33vw, (max-width: 1280px) 25vw, 20vw"
+                className="object-cover transition-transform duration-500 group-hover:scale-105"
               />
             </AspectRatio>
 
-            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 opacity-0 transition-opacity group-hover:opacity-100">
+            <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/70 to-transparent p-2 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100">
               <p className="truncate text-xs text-white">{photo.fileName}</p>
             </div>
 
-            {!isSelectMode && !albumId && (
+            {!isSelectMode && (
               <Link
                 href={`/photos/${photo.id}`}
                 className="absolute inset-0 z-10"
                 aria-label={`Open ${photo.fileName}`}
               />
+            )}
+
+            {!isSelectMode && (
+              <Button type="button" variant="secondary" size="icon-sm"
+                className="absolute left-2 top-2 z-20 bg-background/90 shadow-sm"
+                aria-label={photo.favorite ? `Remove ${photo.fileName} from favorites` : `Favorite ${photo.fileName}`}
+                aria-pressed={photo.favorite} disabled={updateMutation.isPending}
+                onClick={() => updateMutation.mutate({ id: photo.id, favorite: !photo.favorite })}>
+                <Heart className={cn("size-4", photo.favorite && "fill-rose-500 text-rose-500")} />
+              </Button>
             )}
 
             {selectable && isSelectMode && (
@@ -104,7 +116,7 @@ export function PhotoGrid({
                 type="button"
                 variant="destructive"
                 size="icon-xs"
-                className="absolute top-2 right-2 z-20 opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute top-2 right-2 z-20 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                 disabled={trashMutation.isPending}
                 onClick={() => trashMutation.mutate([photo.id])}
                 aria-label={`Move ${photo.fileName} to trash`}
@@ -118,7 +130,7 @@ export function PhotoGrid({
                 type="button"
                 variant="secondary"
                 size="icon-xs"
-                className="absolute top-2 right-2 z-20 opacity-0 transition-opacity group-hover:opacity-100"
+                className="absolute top-2 right-2 z-20 transition-opacity sm:opacity-0 sm:group-hover:opacity-100 sm:group-focus-within:opacity-100"
                 disabled={removeFromAlbumMutation.isPending}
                 onClick={() => removeFromAlbumMutation.mutate(photo.id)}
                 aria-label={`Remove ${photo.fileName} from album`}

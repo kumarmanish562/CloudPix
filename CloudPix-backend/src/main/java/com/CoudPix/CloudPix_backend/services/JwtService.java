@@ -1,12 +1,13 @@
 package com.CoudPix.CloudPix_backend.services;
 
 import com.CoudPix.CloudPix_backend.config.JwtProperties;
-import com.CoudPix.CloudPix_backend.domain.User;
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
-
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
 import javax.crypto.SecretKey;
@@ -14,77 +15,127 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.time.Instant;
+import java.util.HexFormat;
 import java.util.Date;
 import java.util.UUID;
 
 @Service
 public class JwtService {
 
-    private final JwtProperties jwtProperties;
+    private static final Logger log =
+            LoggerFactory.getLogger(JwtService.class);
+
+    private static final String TOKEN_TYPE = "type";
+    private static final String ACCESS_TYPE = "access";
+
+    private final JwtProperties properties;
     private final SecretKey secretKey;
 
-    public JwtService(JwtProperties jwtProperties) {
-        this.jwtProperties = jwtProperties;
-        this.secretKey = buildKey(jwtProperties.secret());
+    public JwtService(JwtProperties properties) {
+        this.properties = properties;
+        this.secretKey = buildKey(properties.secret());
     }
 
-    public String generateAccessToken(User user) {
+    private SecretKey buildKey(String secret) {
+        if (secret == null || secret.isBlank()) {
+            throw new IllegalStateException(
+                    "JWT_SECRET must be configured"
+            );
+        }
+
+        byte[] keyBytes =
+                secret.getBytes(StandardCharsets.UTF_8);
+
+        if (keyBytes.length < 32) {
+            throw new IllegalStateException(
+                    "JWT secret must contain at least 32 UTF-8 bytes"
+            );
+        }
+
+        return Keys.hmacShaKeyFor(keyBytes);
+    }
+
+    public String generateAccessToken(
+            UUID userId,
+            String email
+    ) {
         Instant now = Instant.now();
-        Instant expiry = now.plusMillis(jwtProperties.accessExpirationMs());
 
         return Jwts.builder()
-                .subject(user.getId().toString())
-                .claim("email", user.getEmail())
-                .claim("type", "access")
+                .subject(userId.toString())
+                .claim("email", email)
+                .claim(TOKEN_TYPE, ACCESS_TYPE)
                 .issuedAt(Date.from(now))
-                .expiration(Date.from(expiry))
+                .expiration(Date.from(
+                        now.plusMillis(
+                                properties.accessExpirationMs()
+                        )
+                ))
                 .signWith(secretKey)
                 .compact();
     }
 
-    public String generateRefreshTokenValue() {
-        return UUID.randomUUID().toString() + "." + UUID.randomUUID();
-    }
-
-    public Instant refreshTokenExpiry() {
-        return Instant.now().plusMillis(jwtProperties.refreshExpirationMs());
-    }
-
     public UUID extractUserId(String token) {
         Claims claims = parseClaims(token);
+
+        if (!ACCESS_TYPE.equals(
+                claims.get(TOKEN_TYPE, String.class)
+        )) {
+            throw new IllegalArgumentException(
+                    "Invalid access token"
+            );
+        }
+
         return UUID.fromString(claims.getSubject());
     }
 
-
     public boolean isTokenValid(String token) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+
         try {
             Claims claims = parseClaims(token);
 
-            if (claims.getExpiration() == null
-                    || !claims.getExpiration().after(new Date())) {
-                System.err.println("JWT rejected: expired or missing expiration");
+            if (!ACCESS_TYPE.equals(
+                    claims.get(TOKEN_TYPE, String.class)
+            )) {
                 return false;
             }
 
-            if (!"access".equals(claims.get("type", String.class))) {
-                System.err.println("JWT rejected: token type is not access");
+            if (claims.getSubject() == null
+                    || claims.getSubject().isBlank()) {
                 return false;
             }
 
-            return true;
-        } catch (io.jsonwebtoken.ExpiredJwtException ex) {
-            System.err.println("JWT rejected: expired");
-        } catch (io.jsonwebtoken.security.SignatureException ex) {
-            System.err.println("JWT rejected: signature verification failed");
-        } catch (io.jsonwebtoken.JwtException | IllegalArgumentException ex) {
-            System.err.println("JWT rejected: malformed or invalid token");
+            UUID.fromString(claims.getSubject());
+
+            Date issuedAt = claims.getIssuedAt();
+            Date expiration = claims.getExpiration();
+
+            if (issuedAt == null || expiration == null) {
+                return false;
+            }
+
+            if (issuedAt.toInstant().isAfter(Instant.now())) {
+                return false;
+            }
+
+            return expiration.toInstant().isAfter(Instant.now());
+
+        } catch (JwtException | IllegalArgumentException ex) {
+            log.debug("JWT validation failed: {}", ex.getClass().getSimpleName());
+            return false;
         }
-
-        return false;
     }
 
-
     private Claims parseClaims(String token) {
+        if (token == null || token.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Token must not be blank"
+            );
+        }
+
         return Jwts.parser()
                 .verifyWith(secretKey)
                 .build()
@@ -92,15 +143,37 @@ public class JwtService {
                 .getPayload();
     }
 
-    private SecretKey buildKey(String secret) {
-        byte[] keyBytes = secret.getBytes(StandardCharsets.UTF_8);
-        if (keyBytes.length < 32) {
-            try {
-                keyBytes = MessageDigest.getInstance("SHA-256").digest(keyBytes);
-            } catch (NoSuchAlgorithmException ex) {
-                throw new IllegalStateException("SHA-256 not available", ex);
-            }
+    public String generateRefreshToken() {
+        return UUID.randomUUID() + "." + UUID.randomUUID();
+    }
+
+    public Instant refreshTokenExpiry() {
+        return Instant.now().plusMillis(
+                properties.refreshExpirationMs()
+        );
+    }
+
+    public String hashRefreshToken(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            throw new IllegalArgumentException(
+                    "Refresh token must not be blank"
+            );
         }
-        return Keys.hmacShaKeyFor(keyBytes);
+
+        try {
+            MessageDigest digest =
+                    MessageDigest.getInstance("SHA-256");
+
+            byte[] hash = digest.digest(
+                    rawToken.getBytes(StandardCharsets.UTF_8)
+            );
+
+            return HexFormat.of().formatHex(hash);
+
+        } catch (NoSuchAlgorithmException ex) {
+            throw new IllegalStateException(
+                    "SHA-256 is unavailable", ex
+            );
+        }
     }
 }

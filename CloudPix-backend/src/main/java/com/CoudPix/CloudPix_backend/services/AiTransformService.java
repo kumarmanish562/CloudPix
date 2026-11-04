@@ -53,7 +53,7 @@ public class AiTransformService {
     }
 
     private Photo getActivePhoto(User user, UUID photoId) {
-        return photoRepository.findByIdAndUserId(photoId, user.getId())
+        return photoRepository.findByIdAndUserIdAndStatus(photoId, user.getId(), com.CoudPix.CloudPix_backend.dto.PhotoStatus.ACTIVE)
                 .orElseThrow(() -> new ResourceNotFoundException("Photo not found"));
     }
 

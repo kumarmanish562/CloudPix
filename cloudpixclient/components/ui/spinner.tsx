@@ -1,9 +1,9 @@
 import { cn } from "cn"
-import { RiLoaderLine } from "@remixicon/react"
+import { LoaderCircle } from "lucide-react"
 
 function Spinner({ className, ...props }: React.ComponentProps<"svg">) {
   return (
-    <RiLoaderLine data-slot="spinner" role="status" aria-label="Loading" className={cn("size-4 animate-spin", className)} {...props} />
+    <LoaderCircle data-slot="spinner" role="status" aria-label="Loading" className={cn("size-4 animate-spin", className)} {...props} />
   )
 }
 

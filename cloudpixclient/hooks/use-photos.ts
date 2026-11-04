@@ -2,20 +2,20 @@
 
 import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
-import { api, type PhotoStatus } from "@/lib/api";
+import { api, type PhotoStatus, type PhotoFilters } from "@/lib/api";
 import { uploadPhotoFile } from "@/lib/photo-upload";
-import { albumKeys, photoKeys } from "@/lib/query-keys";
+import { albumKeys, photoKeys, libraryKeys } from "@/lib/query-keys";
 import { useAuthStore } from "@/stores/auth-store";
 import { usePhotoSelectionStore } from "@/stores/photo-selection-store";
 
 const PAGE_SIZE = 24;
 
-export function usePhotos(status: PhotoStatus = "ACTIVE") {
+export function usePhotos(status: PhotoStatus = "ACTIVE", filters: PhotoFilters = {}) {
   const accessToken = useAuthStore((state) => state.accessToken);
 
   return useInfiniteQuery({
-    queryKey: photoKeys.list(status),
-    queryFn: ({ pageParam = 0 }) => api.getPhotos(status, pageParam, PAGE_SIZE),
+    queryKey: [...photoKeys.list(status), filters],
+    queryFn: ({ pageParam = 0 }) => api.getPhotos(status, pageParam, PAGE_SIZE, filters),
     initialPageParam: 0,
     getNextPageParam: (lastPage) => (lastPage.last ? undefined : lastPage.page + 1),
     enabled: !!accessToken,
@@ -66,6 +66,7 @@ function usePhotoBulkMutation(
     onSuccess: (_, photoIds) => {
       queryClient.invalidateQueries({ queryKey: photoKeys.all });
       queryClient.invalidateQueries({ queryKey: albumKeys.all });
+      queryClient.invalidateQueries({ queryKey: libraryKeys.all });
       exitSelectMode();
       toast.success(photoIds.length === 1 ? successMessage : `${photoIds.length} ${successMessage}`);
     },
@@ -89,4 +90,16 @@ export function useRestorePhotos() {
 
 export function usePermanentlyDeletePhotos() {
   return usePhotoBulkMutation(api.permanentlyDeletePhotos, "photos permanently deleted");
+}
+
+export function useUpdatePhoto() {
+  const client = useQueryClient();
+  return useMutation({
+    mutationFn: ({ id, ...body }: { id: string; favorite?: boolean; tags?: string[] }) => api.updatePhoto(id, body),
+    onSuccess: () => {
+      client.invalidateQueries({ queryKey: photoKeys.all });
+      client.invalidateQueries({ queryKey: albumKeys.all });
+    },
+    onError: (error) => toast.error(error.message),
+  });
 }

@@ -22,7 +22,7 @@ import { usePhotoSelectionStore } from "@/stores/photo-selection-store";
 
 type PhotoBulkToolbarProps = {
   photoIds: string[];
-  context: PhotoStatus;
+  context: PhotoStatus | "DUPLICATES";
 };
 
 export function PhotoBulkToolbar({ photoIds, context }: PhotoBulkToolbarProps) {
@@ -100,6 +100,12 @@ export function PhotoBulkToolbar({ photoIds, context }: PhotoBulkToolbarProps) {
           </>
         )}
 
+        {context === "DUPLICATES" && (
+          <Button variant="destructive" size="sm" onClick={() => trashMutation.mutate(selectedIds)} disabled={isBusy}>
+            <Trash2 className="size-4" /> Move selected copies to trash
+          </Button>
+        )}
+
         {context === "ARCHIVE" && (
           <>
             <Button
@@ -137,7 +143,9 @@ export function PhotoBulkToolbar({ photoIds, context }: PhotoBulkToolbarProps) {
             <Button
               variant="destructive"
               size="sm"
-              onClick={() => deleteMutation.mutate(selectedIds)}
+              onClick={() => {
+                if (window.confirm(`Permanently delete ${selectedIds.length} photo(s)? This cannot be undone.`)) deleteMutation.mutate(selectedIds);
+              }}
               disabled={isBusy}
             >
               <Trash2 className="size-4" />

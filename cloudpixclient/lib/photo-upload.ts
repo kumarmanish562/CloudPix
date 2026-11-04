@@ -1,73 +1,48 @@
-import type { Photo } from "@/lib/api";
+import { refreshAccessToken, type Photo } from "@/lib/api";
 import { useAuthStore } from "@/stores/auth-store";
-
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/api";
 
-function parseUploadError(status: number, responseText: string): string {
-  if (!responseText) {
-    return `Upload failed (${status})`;
-  }
-
-  try {
-    const body = JSON.parse(responseText) as {
-      message?: string;
-      detail?: string;
-      error?: string;
-      title?: string;
-    };
-
-    return (
-      body.message ??
-      body.detail ??
-      body.error ??
-      body.title ??
-      `Upload failed (${status})`
-    );
-  } catch {
-    const trimmed = responseText.trim();
-    return trimmed.length > 0 && trimmed.length < 200
-      ? trimmed
-      : `Upload failed (${status})`;
-  }
+export class UploadError extends Error {
+  constructor(message: string, public status: number) { super(message); }
 }
-
-export async function uploadPhotoFile(
-  file: File,
-  onProgress?: (progress: number) => void,
-): Promise<Photo> {
-  const accessToken = useAuthStore.getState().accessToken;
-  if (!accessToken) {
-    throw new Error("Not authenticated");
-  }
-
-  const formData = new FormData();
-  formData.append("file", file);
-
-  return new Promise((resolve, reject) => {
-    const xhr = new XMLHttpRequest();
-    xhr.open("POST", `${API_URL}/photos/upload`);
-    xhr.setRequestHeader("Authorization", `Bearer ${accessToken}`);
-
-    xhr.upload.onprogress = (event) => {
-      if (event.lengthComputable && onProgress) {
-        onProgress(Math.round((event.loaded / event.total) * 100));
-      }
-    };
-
-    xhr.onload = () => {
-      if (xhr.status >= 200 && xhr.status < 300) {
-        try {
-          resolve(JSON.parse(xhr.responseText) as Photo);
-        } catch {
-          reject(new Error("Invalid response from server"));
+export async function uploadPhotoFile(file: File, onProgress?: (progress: number) => void,
+  signal?: AbortSignal, allowDuplicate = false, retried = false): Promise<Photo> {
+  const token = useAuthStore.getState().accessToken;
+  if (!token) throw new Error("Please sign in to upload");
+  if (signal?.aborted) throw new DOMException("Upload cancelled", "AbortError");
+  try {
+    return await new Promise<Photo>((resolve, reject) => {
+      const xhr = new XMLHttpRequest();
+      const abort = () => xhr.abort();
+      const cleanup = () => signal?.removeEventListener("abort", abort);
+      xhr.open("POST", `${API_URL}/photos/upload?allowDuplicate=${allowDuplicate}`);
+      xhr.setRequestHeader("Authorization", `Bearer ${token}`);
+      xhr.timeout = 180_000;
+      xhr.upload.onprogress = (event) => {
+        if (event.lengthComputable) onProgress?.(Math.round(event.loaded / event.total * 100));
+      };
+      xhr.onload = () => {
+        cleanup();
+        if (xhr.status >= 200 && xhr.status < 300) {
+          try { resolve(JSON.parse(xhr.responseText) as Photo); }
+          catch { reject(new Error("Invalid upload response")); }
+        } else {
+          let message = `Upload failed (${xhr.status})`;
+          try { message = JSON.parse(xhr.responseText).message ?? message; } catch {}
+          reject(new UploadError(message, xhr.status));
         }
-        return;
-      }
-
-      reject(new Error(parseUploadError(xhr.status, xhr.responseText)));
-    };
-
-    xhr.onerror = () => reject(new Error("Network error during upload"));
-    xhr.send(formData);
-  });
+      };
+      xhr.onerror = () => { cleanup(); reject(new Error("Network error. You can retry this upload.")); };
+      xhr.ontimeout = () => { cleanup(); reject(new Error("Upload timed out. Please retry.")); };
+      xhr.onabort = () => { cleanup(); reject(new DOMException("Upload cancelled", "AbortError")); };
+      signal?.addEventListener("abort", abort, { once: true });
+      const form = new FormData(); form.append("file", file); xhr.send(form);
+    });
+  } catch (error) {
+    if (error instanceof UploadError && error.status === 401 && !retried && !signal?.aborted) {
+      if (useAuthStore.getState().accessToken === token) await refreshAccessToken();
+      return uploadPhotoFile(file, onProgress, signal, allowDuplicate, true);
+    }
+    throw error;
+  }
 }
