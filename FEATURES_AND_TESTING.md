@@ -106,12 +106,11 @@ npm.cmd run build
 ## Run the real app
 
 1. Start your normal PostgreSQL database. The root docker-compose.yml provisions the development database on localhost:5436.
-2. Copy CloudPix-backend/.env.example to CloudPix-backend/.env and fill in your database, JWT and ImageKit values. Spring does not automatically load .env files: load the values through your IDE run configuration, PowerShell environment, or your deployment system.
+2. Copy CloudPix-backend/.env.example to CloudPix-backend/.env and fill in your database, JWT and ImageKit values. The start script below loads these as literal values; existing process environment variables take precedence.
 3. Run the backend:
 
 ```powershell
-cd CloudPix-backend
-.\mvnw.cmd spring-boot:run
+powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-backend.ps1
 ```
 
 4. Copy cloudpixclient/.env.example to cloudpixclient/.env.local. Set NEXT_PUBLIC_API_URL and NEXT_PUBLIC_IMAGEKIT_URL_ENDPOINT to the backend and ImageKit endpoint you use.

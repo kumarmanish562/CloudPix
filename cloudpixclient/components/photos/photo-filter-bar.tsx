@@ -28,17 +28,19 @@ export function PhotoFilterBar({ filters, onChange }: { filters: PhotoFilters; o
       <details>
         <summary className="cursor-pointer text-sm font-medium text-muted-foreground">Filter by tag, format, or upload date</summary>
         <div className="mt-4 grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
-          <label className="space-y-1 text-xs text-muted-foreground">Tag
-            <select className={selectClass} value={filters.tag ?? ""} onChange={(e) => update("tag", e.target.value)}>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <label htmlFor="photo-tag-filter">Tag</label>
+            <select id="photo-tag-filter" className={selectClass} value={filters.tag ?? ""} onChange={(e) => update("tag", e.target.value)}>
               <option value="">All tags</option>{tags.map((tag) => <option key={tag}>{tag}</option>)}
             </select>
-          </label>
-          <label className="space-y-1 text-xs text-muted-foreground">Format
-            <select className={selectClass} value={filters.mimeType ?? ""} onChange={(e) => update("mimeType", e.target.value)}>
+          </div>
+          <div className="space-y-1 text-xs text-muted-foreground">
+            <label htmlFor="photo-format-filter">Format</label>
+            <select id="photo-format-filter" className={selectClass} value={filters.mimeType ?? ""} onChange={(e) => update("mimeType", e.target.value)}>
               <option value="">All image formats</option>
               {["jpeg", "png", "webp", "gif", "heic", "heif"].map((type) => <option key={type} value={`image/${type}`}>{type.toUpperCase()}</option>)}
             </select>
-          </label>
+          </div>
           <label className="space-y-1 text-xs text-muted-foreground">Uploaded from (UTC)
             <Input type="date" value={filters.from?.slice(0, 10) ?? ""}
               onChange={(e) => update("from", e.target.value ? e.target.value + "T00:00:00Z" : "")} />

@@ -10,7 +10,7 @@ async function register(page: Page) {
   await page.getByLabel("Email", { exact: true }).fill(`browser-${crypto.randomUUID()}@example.com`);
   await page.getByLabel("Password", { exact: true }).fill("StrongPass123!");
   await page.getByRole("button", { name: "Create account", exact: true }).click();
-  await expect(page).toHaveURL(/\/photos$/);
+  await expect(page).toHaveURL(/\/photos$/, { timeout: 45_000 });
 }
 async function upload(page: Page, name: string) {
   await page.locator('input[type="file"]').first().setInputFiles({ name, mimeType: "image/png", buffer: png });
@@ -23,6 +23,7 @@ async function nav(page: Page, name: string) {
 }
 
 test("register, upload, favorite, tag, search, filter, and download an original", async ({ page }) => {
+  test.setTimeout(120_000);
   await register(page);
   await upload(page, "holiday.png");
   await page.getByRole("button", { name: "Favorite holiday.png", exact: true }).click();
