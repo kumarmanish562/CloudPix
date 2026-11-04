@@ -1,99 +1,23 @@
-
 "use client";
-
-import { useRef, useState } from "react";
-import { ImagePlus, Upload } from "lucide-react";
+import { useRef } from "react";
+import { ImagePlus } from "lucide-react";
+import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
-import { Progress } from "@/components/ui/progress";
-import { useUploadPhotos } from "@/hooks/use-photos";
-
-type UploadProgress = {
-  fileName: string;
-  progress: number;
-};
+import { useUploadQueueStore } from "@/stores/upload-queue-store";
+const TYPES = new Set(["image/jpeg", "image/png", "image/webp", "image/gif", "image/heic", "image/heif"]);
 
 export function PhotoUploadButton() {
-  const inputRef = useRef<HTMLInputElement>(null);
-  const uploadMutation = useUploadPhotos();
-  const [uploads, setUploads] = useState<UploadProgress[]>([]);
-
-  function handleSelect() {
-    inputRef.current?.click();
+  const input = useRef<HTMLInputElement>(null);
+  const add = useUploadQueueStore((s) => s.add);
+  function selected(event: React.ChangeEvent<HTMLInputElement>) {
+    const files = Array.from(event.target.files ?? []); event.target.value = "";
+    const valid = files.filter((file) => TYPES.has(file.type) && file.size > 0 && file.size <= 25 * 1024 * 1024);
+    if (valid.length !== files.length) toast.error("Some files were skipped. Choose JPEG, PNG, WebP, GIF, HEIC or HEIF images up to 25 MB.");
+    const pending = useUploadQueueStore.getState().items.filter((i) => i.status === "queued" || i.status === "uploading").length;
+    const accepted = valid.slice(0, Math.max(0, 100 - pending));
+    if (accepted.length < valid.length) toast.error("The upload queue holds up to 100 pending photos.");
+    add(accepted);
   }
-
-  async function handleFilesSelected(event: React.ChangeEvent<HTMLInputElement>) {
-    const files = Array.from(event.target.files ?? []).filter((file) =>
-      file.type.startsWith("image/"),
-    );
-
-    event.target.value = "";
-
-    if (files.length === 0) {
-      return;
-    }
-
-    setUploads(files.map((file) => ({ fileName: file.name, progress: 0 })));
-
-    try {
-      await uploadMutation.mutateAsync({
-        files,
-        onFileProgress: (fileName, progress) => {
-          setUploads((current) =>
-            current.map((item) =>
-              item.fileName === fileName ? { ...item, progress } : item,
-            ),
-          );
-        },
-      });
-    } catch {
-      // onError in useUploadPhotos already shows a toast
-    } finally {
-      setUploads([]);
-    }
-  }
-
-  return (
-    <>
-      <input
-        ref={inputRef}
-        type="file"
-        accept="image/*"
-        multiple
-        className="hidden"
-        onChange={handleFilesSelected}
-      />
-
-      <Button onClick={handleSelect} disabled={uploadMutation.isPending}>
-        {uploadMutation.isPending ? (
-          <>
-            <Upload className="size-4" />
-            Uploading...
-          </>
-        ) : (
-          <>
-            <ImagePlus className="size-4" />
-            Upload photos
-          </>
-        )}
-      </Button>
-
-      {uploads.length > 0 && (
-        <div className="fixed bottom-4 right-4 z-50 w-[min(100vw-2rem,22rem)] space-y-3 rounded-2xl border border-border/70 bg-card/95 p-4 shadow-xl backdrop-blur-md">
-          <div className="flex items-center gap-2 text-sm font-medium text-foreground">
-            <Upload className="size-4" />
-            Uploading {uploads.length} file{uploads.length === 1 ? "" : "s"}
-          </div>
-          {uploads.map((upload) => (
-            <div key={upload.fileName} className="space-y-1.5">
-              <div className="flex items-center justify-between gap-2 text-xs text-muted-foreground">
-                <span className="truncate">{upload.fileName}</span>
-                <span className="shrink-0">{upload.progress}%</span>
-              </div>
-              <Progress value={upload.progress} />
-            </div>
-          ))}
-        </div>
-      )}
-    </>
-  );
+  return <><input ref={input} type="file" accept="image/jpeg,image/png,image/webp,image/gif,image/heic,image/heif" multiple className="hidden" onChange={selected} />
+    <Button onClick={() => input.current?.click()}><ImagePlus className="size-4" /> Upload photos</Button></>;
 }

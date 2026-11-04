@@ -67,7 +67,7 @@ export function useLogin() {
       mutationFn: () => api.logout(),
       onSettled: () => {
         clearAuth();
-        queryClient.removeQueries({ queryKey: authKeys.all });
+        queryClient.clear();
         toast.success("Signed out");
         router.replace("/login");
       },

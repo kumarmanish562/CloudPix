@@ -2,7 +2,11 @@ package com.CoudPix.CloudPix_backend.domain;
 
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Set;
+import java.util.LinkedHashSet;
 
+import com.CoudPix.CloudPix_backend.dto.AiTransformType;
+import com.CoudPix.CloudPix_backend.dto.PhotoStatus;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
@@ -15,6 +19,8 @@ import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.PrePersist;
 import jakarta.persistence.Table;
+import jakarta.persistence.ElementCollection;
+import jakarta.persistence.CollectionTable;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
@@ -79,6 +85,18 @@ public class Photo {
     @Enumerated(EnumType.STRING)
     @Column(name = "ai_transform_type", length = 50)
     private AiTransformType aiTransformType;
+
+    @Column(nullable = false)
+    private boolean favorite;
+
+    @Column(name = "content_hash", length = 64)
+    private String contentHash;
+
+    @ElementCollection
+    @CollectionTable(name = "photo_tags", joinColumns = @JoinColumn(name = "photo_id"))
+    @Column(name = "tag", length = 50, nullable = false)
+    @Builder.Default
+    private Set<String> tags = new LinkedHashSet<>();
 
 
 

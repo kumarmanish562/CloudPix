@@ -1,4 +1,4 @@
-package com.CoudPix.CloudPix_backend.domain;
+package com.CoudPix.CloudPix_backend.dto;
 
 public enum PhotoStatus {
     ARCHIVE,

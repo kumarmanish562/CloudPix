@@ -1,10 +1,8 @@
 package com.CoudPix.CloudPix_backend.dto;
 
-import com.CoudPix.CloudPix_backend.domain.AiTransformType;
-import com.CoudPix.CloudPix_backend.domain.PhotoStatus;
-
 import java.time.Instant;
 import java.util.UUID;
+import java.util.Set;
 
 
 public record PhotoResponse(
@@ -21,7 +19,10 @@ public record PhotoResponse(
         Instant createdAt,
         Instant deletedAt,
         UUID parentPhotoId,
-        AiTransformType aiTransformType
+        AiTransformType aiTransformType,
+        boolean favorite,
+        Set<String> tags,
+        String contentHash
 )
 {
 

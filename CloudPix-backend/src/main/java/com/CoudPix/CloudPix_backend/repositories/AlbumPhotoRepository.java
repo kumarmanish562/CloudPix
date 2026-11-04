@@ -18,7 +18,7 @@ public interface AlbumPhotoRepository extends JpaRepository<AlbumPhoto, UUID> {
     @Query("""
             SELECT ap FROM AlbumPhoto ap
             JOIN FETCH ap.photo p
-            WHERE ap.album.id = :albumId AND p.user.id = :userId
+            WHERE ap.album.id = :albumId AND p.user.id = :userId AND p.status = 'ACTIVE'
             ORDER BY ap.sortOrder ASC, ap.addedAt DESC
             """)
     Page<AlbumPhoto> findByAlbumIdAndUserId(
@@ -40,4 +40,6 @@ public interface AlbumPhotoRepository extends JpaRepository<AlbumPhoto, UUID> {
     int findMaxSortOrder(@Param("albumId") UUID albumId);
 
     List<AlbumPhoto> findByPhotoId(UUID photoId);
+
+    void deleteByAlbumId(UUID albumId);
 }

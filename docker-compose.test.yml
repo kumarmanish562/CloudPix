@@ -1,0 +1,17 @@
+services:
+  postgres-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: cloudpix_test
+      POSTGRES_USER: cloudpix_test
+      POSTGRES_PASSWORD: cloudpix_test_only
+    ports:
+      - "127.0.0.1:55436:5432"
+    tmpfs:
+      - /var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U cloudpix_test -d cloudpix_test"]
+      interval: 2s
+      timeout: 3s
+      retries: 30
+

@@ -73,7 +73,7 @@ public class AlbumController {
         PageResponse<PhotoResponse> photos = albumService.getAlbumPhotos(
                 user,
                 id,
-                PageRequest.of(page, size)
+                com.CoudPix.CloudPix_backend.services.PhotoDiscoveryService.albumPage(page, size)
         );
         return ResponseEntity.ok(photos);
     }

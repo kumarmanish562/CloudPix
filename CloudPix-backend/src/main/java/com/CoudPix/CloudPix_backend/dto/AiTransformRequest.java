@@ -1,6 +1,5 @@
 package com.CoudPix.CloudPix_backend.dto;
 
-import com.CoudPix.CloudPix_backend.domain.AiTransformType;
 import jakarta.validation.constraints.NotNull;
 
 
