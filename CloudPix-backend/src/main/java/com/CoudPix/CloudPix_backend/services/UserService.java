@@ -29,7 +29,7 @@ public class UserService {
     }
 
     public User getByEmail(String email) {
-        return userRepository.findByEmail(email.toLowerCase())
+        return userRepository.findByEmail(email.toLowerCase(java.util.Locale.ROOT))
                 .orElseThrow(() -> new UnauthorizedException("User not found"));
     }
 

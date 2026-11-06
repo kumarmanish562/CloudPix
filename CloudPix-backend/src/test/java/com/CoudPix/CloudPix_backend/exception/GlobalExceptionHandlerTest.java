@@ -125,4 +125,46 @@ class GlobalExceptionHandlerTest {
         assertNotNull(body.message());
         assertEquals("/api/auth/login", body.path());
     }
+
+    @Test
+    void providerAndDatabaseFailuresHideInternalDetails() {
+        var provider = handler.handleImageKitFailure(new ImageKitUploadException("private-provider-detail"), request);
+        assertEquals(502, provider.getStatusCode().value());
+        assertFalse(provider.getBody().toString().contains("private-provider-detail"));
+        var database = handler.handleDataIntegrity(new org.springframework.dao.DataIntegrityViolationException("private SQL detail"), request);
+        assertEquals(409, database.getStatusCode().value());
+        assertFalse(database.getBody().toString().contains("private SQL detail"));
+    }
+
+    @Test
+    void accessAndConstraintFailuresUseSafeClientMessages() {
+        var forbidden = handler.handleForbidden(new org.springframework.security.access.AccessDeniedException("internal role detail"), request);
+        assertEquals(403, forbidden.getStatusCode().value());
+        assertFalse(forbidden.getBody().toString().contains("internal role detail"));
+        var constraint = handler.handleConstraintViolation(new jakarta.validation.ConstraintViolationException("internal input", java.util.Set.of()), request);
+        assertEquals(400, constraint.getStatusCode().value());
+        assertFalse(constraint.getBody().toString().contains("internal input"));
+    }
+
+    @Test
+    void oversizedAndMissingUploadsHaveSpecificStatusCodes() {
+        var tooLarge = handler.handleUploadTooLarge(new org.springframework.web.multipart.MaxUploadSizeExceededException(25_000_000), request);
+        assertEquals(413, tooLarge.getStatusCode().value());
+        var missing = handler.handleMissingInput(new org.springframework.web.multipart.support.MissingServletRequestPartException("file"), request);
+        assertEquals(400, missing.getStatusCode().value());
+    }
+
+    @Test
+    void validationErrorsPreserveTheFirstMessageAndHandleMissingMessages() throws Exception {
+        var errors = new org.springframework.validation.BeanPropertyBindingResult(new Object(), "request");
+        errors.addError(new org.springframework.validation.FieldError("request", "email", "first error"));
+        errors.addError(new org.springframework.validation.FieldError("request", "email", "second error"));
+        errors.addError(new org.springframework.validation.FieldError("request", "password", null, false, null, null, null));
+        var method = com.CoudPix.CloudPix_backend.controllers.AuthController.class.getMethod("register", com.CoudPix.CloudPix_backend.dto.RegisterRequest.class);
+        var exception = new org.springframework.web.bind.MethodArgumentNotValidException(new org.springframework.core.MethodParameter(method, 0), errors);
+        var response = handler.handleValidation(exception, request);
+        assertEquals(400, response.getStatusCode().value());
+        assertEquals("first error", response.getBody().fieldErrors().get("email"));
+        assertEquals("Invalid value", response.getBody().fieldErrors().get("password"));
+    }
 }

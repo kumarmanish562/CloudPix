@@ -301,6 +301,168 @@ class CloudPixWorkflowTest {
                 "url", "https://evil.example/image.png", "sizeBytes", 12), 404);
     }
 
+
+    @Test
+    void albumEditingRemovalAndCoverOwnershipAreEnforced() throws Exception {
+        Session owner = register(), other = register();
+        String photo = upload(owner, "cover.png", IMAGE, false, 201).get("id").asText();
+        String foreign = upload(other, "foreign.png", IMAGE, false, 201).get("id").asText();
+        String album = result(auth(post("/api/albums"), owner).contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("title", "Original"))), 201).get("id").asText();
+        performJson(owner, "/api/albums/" + album + "/photos", Map.of("photoIds", List.of(photo, photo)), 204);
+        mvc.perform(auth(patch("/api/albums/" + album), owner).contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("title", "Renamed", "coverPhotoId", photo))))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.title").value("Renamed"))
+                .andExpect(jsonPath("$.coverPhotoId").value(photo));
+        mvc.perform(auth(get("/api/albums"), owner)).andExpect(jsonPath("$[0].title").value("Renamed"));
+        mvc.perform(auth(get("/api/albums/" + album + "/photos"), owner))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.totalElements").value(1));
+        mvc.perform(auth(patch("/api/albums/" + album), other).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Stolen\"}")).andExpect(status().isNotFound());
+        mvc.perform(auth(patch("/api/albums/" + album), owner).contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("coverPhotoId", foreign)))).andExpect(status().isNotFound());
+        performJson(owner, "/api/photos/archive", Map.of("photoIds", List.of(photo)), 204);
+        mvc.perform(auth(patch("/api/albums/" + album), owner).contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("coverPhotoId", photo)))).andExpect(status().isBadRequest());
+        performJson(owner, "/api/albums/" + album + "/photos", Map.of("photoIds", List.of(photo)), 400);
+        performJson(owner, "/api/albums/" + album + "/photos", Map.of("photoIds", List.of(foreign)), 404);
+        performJson(owner, "/api/photos/restore", Map.of("photoIds", List.of(photo)), 204);
+        mvc.perform(auth(delete("/api/albums/" + album + "/photos/" + photo), owner)).andExpect(status().isNoContent());
+        mvc.perform(auth(get("/api/albums/" + album), owner)).andExpect(jsonPath("$.coverPhotoId").isEmpty())
+                .andExpect(jsonPath("$.photoCount").value(0));
+        mvc.perform(auth(delete("/api/albums/" + album + "/photos/" + photo), owner)).andExpect(status().isNotFound());
+        mvc.perform(auth(get("/api/albums/" + album + "/download"), owner)).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void badRequestsAndCorsAreHandledBeforeAnyProviderCalls() throws Exception {
+        Session owner = register();
+        performJson(null, "/api/auth/register", Map.of("email", owner.email().toUpperCase(Locale.ROOT),
+                "password", "StrongPass123!", "displayName", "Duplicate"), 409);
+        performJson(null, "/api/auth/register", Map.of("email", "not-an-email", "password", "short", "displayName", ""), 400);
+        mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON).content("{broken")).andExpect(status().isBadRequest());
+        mvc.perform(post("/api/auth/logout")).andExpect(status().isNoContent());
+        mvc.perform(post("/api/auth/logout").contentType(MediaType.APPLICATION_JSON).content("{}")).andExpect(status().isNoContent());
+        mvc.perform(auth(multipart("/api/photos/upload"), owner)).andExpect(status().isBadRequest());
+        MockMultipartFile oversized = new MockMultipartFile("file", "large.png", "image/png", IMAGE) {
+            @Override public long getSize() { return 26L * 1024 * 1024; }
+        };
+        mvc.perform(auth(multipart("/api/photos/upload").file(oversized), owner)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/photos/not-a-uuid"), owner)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/photos").param("status", "INVALID"), owner)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/photos").param("q", "x".repeat(201)), owner)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/photos").param("tag", "x".repeat(51)), owner)).andExpect(status().isBadRequest());
+        mvc.perform(auth(get("/api/photos/memories").param("date", "not-a-date"), owner)).andExpect(status().isBadRequest());
+        performJson(owner, "/api/photos/trash", Map.of("photoIds", List.of()), 400);
+        mvc.perform(options("/api/photos").header("Origin", "http://localhost:3000")
+                .header("Access-Control-Request-Method", "GET"))
+                .andExpect(status().isOk()).andExpect(header().string("Access-Control-Allow-Origin", "http://localhost:3000"));
+        mvc.perform(options("/api/photos").header("Origin", "https://untrusted.example")
+                .header("Access-Control-Request-Method", "GET")).andExpect(status().isForbidden());
+        verify(imagekit, never()).uploadPhoto(any(), any());
+    }
+
+    @Test
+    void metadataPatchesPreserveOmittedFieldsAndBulkValidationHasNoPartialSideEffects() throws Exception {
+        Session owner = register();
+        String first = upload(owner, "a.png", IMAGE, false, 201).get("id").asText();
+        String second = upload(owner, "b.png", new byte[] { 4, 5, 6 }, false, 201).get("id").asText();
+        mvc.perform(auth(patch("/api/photos/" + first), owner).contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("favorite", true, "tags", List.of("Family"))))).andExpect(status().isOk());
+        mvc.perform(auth(patch("/api/photos/" + first), owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"favorite\":false}")).andExpect(status().isOk()).andExpect(jsonPath("$.tags[0]").value("family"));
+        mvc.perform(auth(patch("/api/photos/" + first), owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"tags\":[]}")).andExpect(status().isOk()).andExpect(jsonPath("$.tags.length()").value(0));
+        mvc.perform(auth(get("/api/photos").param("favorite", "false").param("sort", "size"), owner))
+                .andExpect(jsonPath("$.totalElements").value(2));
+        performJson(owner, "/api/photos/trash", Map.of("photoIds", List.of(first, first)), 204);
+        performJson(owner, "/api/photos/delete-permanent", Map.of("photoIds", List.of(first, second)), 400);
+        verify(imagekit, never()).deleteFile(anyString());
+        mvc.perform(auth(get("/api/photos/" + first), owner)).andExpect(jsonPath("$.status").value("TRASH"));
+        mvc.perform(auth(get("/api/photos/" + second), owner)).andExpect(jsonPath("$.status").value("ACTIVE"));
+        performJson(owner, "/api/photos/trash", Map.of("photoIds", List.of(second)), 204);
+        mvc.perform(auth(delete("/api/photos/" + second), owner)).andExpect(status().isNoContent());
+        mvc.perform(auth(get("/api/photos/" + second), owner)).andExpect(status().isNotFound());
+    }
+
+    @Test
+    void shareLimitsAndRevocationCannotBeBypassedAcrossAlbums() throws Exception {
+        Session owner = register();
+        String album = result(auth(post("/api/albums"), owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Limited\"}"), 201).get("id").asText();
+        List<UUID> ids = new ArrayList<>();
+        for (int i = 0; i < 20; i++) {
+            UUID id = UUID.randomUUID(); ids.add(id);
+            jdbc.update("insert into album_shares (id, album_id, token_hash, expires_at) values (?, ?, ?, ?)",
+                    id, UUID.fromString(album), UUID.randomUUID().toString().replace("-", "").repeat(2),
+                    Instant.now().plusSeconds(3600).atOffset(ZoneOffset.UTC));
+        }
+        performJson(owner, "/api/albums/" + album + "/shares", Map.of("expiresInHours", 24), 400);
+        mvc.perform(auth(delete("/api/albums/" + album + "/shares/" + ids.getFirst()), owner)).andExpect(status().isNoContent());
+        JsonNode share = result(auth(post("/api/albums/" + album + "/shares"), owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"expiresInHours\":1}"), 201);
+        String token = share.get("token").asText();
+        mvc.perform(get("/api/shared/" + token + "/photos/" + UUID.randomUUID())).andExpect(status().isNotFound());
+        String anotherAlbum = result(auth(post("/api/albums"), owner).contentType(MediaType.APPLICATION_JSON)
+                .content("{\"title\":\"Other\"}"), 201).get("id").asText();
+        mvc.perform(auth(delete("/api/albums/" + anotherAlbum + "/shares/" + share.get("id").asText()), owner))
+                .andExpect(status().isNotFound());
+        mvc.perform(get("/api/shared/" + token).param("size", "101")).andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void simultaneousRefreshRequestsCanConsumeATokenOnlyOnce() throws Exception {
+        Session owner = register();
+        var ready = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            java.util.concurrent.Callable<Integer> refresh = () -> {
+                ready.await();
+                return mvc.perform(post("/api/auth/refresh").contentType(MediaType.APPLICATION_JSON)
+                        .content(body(Map.of("refreshToken", owner.refresh())))).andReturn().getResponse().getStatus();
+            };
+            var first = pool.submit(refresh); var second = pool.submit(refresh);
+            ready.countDown();
+            var statuses = new ArrayList<>(List.of(first.get(20, java.util.concurrent.TimeUnit.SECONDS), second.get(20, java.util.concurrent.TimeUnit.SECONDS)));
+            Collections.sort(statuses);
+            assertEquals(List.of(200, 401), statuses);
+        }
+    }
+
+    @Test
+    void simultaneousUploadsCannotBypassDuplicateDetection() throws Exception {
+        Session owner = register();
+        var ready = new java.util.concurrent.CountDownLatch(1);
+        try (var pool = java.util.concurrent.Executors.newVirtualThreadPerTaskExecutor()) {
+            java.util.concurrent.Callable<Integer> upload = () -> {
+                ready.await();
+                return mvc.perform(auth(multipart("/api/photos/upload")
+                        .file(new MockMultipartFile("file", "same.png", "image/png", IMAGE)), owner)).andReturn().getResponse().getStatus();
+            };
+            var first = pool.submit(upload); var second = pool.submit(upload);
+            ready.countDown();
+            var statuses = new ArrayList<>(List.of(first.get(20, java.util.concurrent.TimeUnit.SECONDS), second.get(20, java.util.concurrent.TimeUnit.SECONDS)));
+            Collections.sort(statuses);
+            assertEquals(List.of(201, 409), statuses);
+            verify(imagekit).uploadPhoto(any(User.class), any(MultipartFile.class));
+        }
+    }
+
+    @Test
+    void metadataImportUsesProviderVerifiedValuesAndRejectsRepeatedImports() throws Exception {
+        Session owner = register();
+        var file = io.imagekit.models.files.File.builder().fileId("verified-" + UUID.randomUUID()).name("verified.png")
+                .url("https://ik.imagekit.io/test/verified.png").size(42.0).mime("image/png").build();
+        when(imagekit.listAssetsInFolder(eq(ImageKitService.userFolder(UUID.fromString(owner.userId()))), anyLong(), anyLong()))
+                .thenReturn(List.of(io.imagekit.models.assets.AssetListResponse.ofFile(file)));
+        var payload = Map.of("imagekitFileId", file.fileId().orElseThrow(), "fileName", "spoofed.png",
+                "url", "https://untrusted.example/file.png", "sizeBytes", 1);
+        mvc.perform(auth(post("/api/photos"), owner).contentType(MediaType.APPLICATION_JSON).content(body(payload)))
+                .andExpect(status().isCreated()).andExpect(jsonPath("$.fileName").value("verified.png"))
+                .andExpect(jsonPath("$.url").value("https://ik.imagekit.io/test/verified.png"));
+        performJson(owner, "/api/photos", payload, 409);
+        mvc.perform(auth(get("/api/photos/memories"), owner)).andExpect(status().isOk());
+    }
+
     private Session register() throws Exception {
         String email = UUID.randomUUID() + "@example.com";
         JsonNode node = result(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)

@@ -161,4 +161,61 @@ class JwtAuthenticationFilterTest {
         verifyNoInteractions(userService);
         verifyNoInteractions(userDetailsService);
     }
+
+    @Test
+    void ignoresOtherSchemesAndEmptyBearerTokens() throws Exception {
+        for (String header : new String[] { "Basic credentials", "Bearer ", "Bearer    " }) {
+            var request = new MockHttpServletRequest(); request.addHeader("Authorization", header);
+            filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+            assertNull(SecurityContextHolder.getContext().getAuthentication());
+        }
+        verifyNoInteractions(userService, userDetailsService);
+    }
+
+    @Test
+    void preservesAnExistingAuthentication() throws Exception {
+        var existing = new org.springframework.security.authentication.UsernamePasswordAuthenticationToken("existing", null, java.util.List.of());
+        SecurityContextHolder.getContext().setAuthentication(existing);
+        var request = new MockHttpServletRequest(); request.addHeader("Authorization", "Bearer invalid");
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        assertSame(existing, SecurityContextHolder.getContext().getAuthentication());
+        verifyNoInteractions(userService, userDetailsService);
+    }
+
+    @Test
+    void validTokensForDeletedUsersDoNotAuthenticate() throws Exception {
+        UUID userId = UUID.randomUUID();
+        var request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "Bearer " + jwtService.generateAccessToken(userId, "gone@example.com"));
+        filter.doFilter(request, new MockHttpServletResponse(), new MockFilterChain());
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        verifyNoInteractions(userDetailsService);
+    }
+
+    @Test
+    void accountDisappearingDuringAuthenticationDoesNotBreakTheFilterChain() throws Exception {
+        UUID userId = UUID.randomUUID();
+        when(userService.findEmailById(userId)).thenReturn(Optional.of("gone@example.com"));
+        when(userDetailsService.loadUserByUsername("gone@example.com"))
+                .thenThrow(new org.springframework.security.core.userdetails.UsernameNotFoundException("gone"));
+        var request = new MockHttpServletRequest();
+        request.addHeader("Authorization", "bEaReR " + jwtService.generateAccessToken(userId, "gone@example.com"));
+        var chain = new MockFilterChain();
+        filter.doFilter(request, new MockHttpServletResponse(), chain);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNotNull(chain.getRequest());
+    }
+
+    @Test
+    void malformedIdentityIsRejectedEvenIfValidationWasPreviouslySuccessful() throws Exception {
+        JwtService parser = mock(JwtService.class);
+        when(parser.isTokenValid("token")).thenReturn(true);
+        when(parser.extractUserId("token")).thenThrow(new IllegalArgumentException("invalid subject"));
+        var guarded = new JwtAuthenticationFilter(parser, userDetailsService, userService);
+        var request = new MockHttpServletRequest(); request.addHeader("Authorization", "Bearer token");
+        var chain = new MockFilterChain();
+        guarded.doFilter(request, new MockHttpServletResponse(), chain);
+        assertNull(SecurityContextHolder.getContext().getAuthentication());
+        assertNotNull(chain.getRequest());
+    }
 }

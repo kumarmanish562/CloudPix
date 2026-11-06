@@ -36,14 +36,22 @@ public class ImageKitService {
     private final ImageKitClient imageKitClient;
     private final ImageKitProperties imageKitProperties;
     private final HttpClient httpClient;
+    private final Duration retryDelay;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ImageKitService(ImageKitClient imageKitClient, ImageKitProperties imageKitProperties) {
-        this.imageKitClient = imageKitClient;
-        this.imageKitProperties = imageKitProperties;
-        this.httpClient = HttpClient.newBuilder()
+        this(imageKitClient, imageKitProperties, HttpClient.newBuilder()
                 .connectTimeout(Duration.ofSeconds(30))
                 .followRedirects(HttpClient.Redirect.NORMAL)
-                .build();
+                .build(), AI_DOWNLOAD_RETRY_DELAY);
+    }
+
+    ImageKitService(ImageKitClient imageKitClient, ImageKitProperties imageKitProperties,
+            HttpClient httpClient, Duration retryDelay) {
+        this.imageKitClient = imageKitClient;
+        this.imageKitProperties = imageKitProperties;
+        this.httpClient = httpClient;
+        this.retryDelay = retryDelay;
     }
 
     public FileUploadResponse uploadPhoto(User user, MultipartFile file) {
@@ -157,10 +165,10 @@ public class ImageKitService {
             } catch (ImageKitUploadException ex) {
                 lastError = ex;
                 sleepBeforeRetry();
-            } catch (IOException | InterruptedException ex) {
-                if (ex instanceof InterruptedException) {
-                    Thread.currentThread().interrupt();
-                }
+            } catch (InterruptedException ex) {
+                Thread.currentThread().interrupt();
+                throw new ImageKitUploadException("AI image download interrupted", ex);
+            } catch (IOException ex) {
                 lastError = new ImageKitUploadException("Failed to download transformed image: " + ex.getMessage(), ex);
                 sleepBeforeRetry();
             }
@@ -222,9 +230,10 @@ public class ImageKitService {
 
     private void sleepBeforeRetry() {
         try {
-            Thread.sleep(AI_DOWNLOAD_RETRY_DELAY.toMillis());
+            Thread.sleep(retryDelay.toMillis());
         } catch (InterruptedException ex) {
             Thread.currentThread().interrupt();
+            throw new ImageKitUploadException("AI image download interrupted", ex);
         }
     }
 

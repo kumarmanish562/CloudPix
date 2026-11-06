@@ -45,7 +45,7 @@ public class AiTransformService {
         String transformUrl = imageKitService.buildAiTransformUrl(photo.getUrl(), transformChain);
         byte[] transformedBytes = imageKitService.downloadTransformedImage(transformUrl);
 
-        String suffix = request.type().name().toLowerCase().replace('_', '-');
+        String suffix = request.type().name().toLowerCase(java.util.Locale.ROOT).replace('_', '-');
         String fileName = buildDerivedFileName(photo.getFileName(), suffix);
 
         var uploadResponse = imageKitService.uploadBytes(user, transformedBytes, fileName);
@@ -122,7 +122,9 @@ public class AiTransformService {
     }
 
     private String sanitizeFocusObject(String focusObject) {
-        return focusObject.trim().toLowerCase().replaceAll("[^a-z0-9_-]", "");
+        String normalized = focusObject.trim().toLowerCase(java.util.Locale.ROOT).replaceAll("[^a-z0-9_-]", "");
+        if (normalized.isBlank()) throw new BadRequestException("Focus object must contain letters or numbers");
+        return normalized;
     }
 
     private String urlEncodePrompt(String prompt) {

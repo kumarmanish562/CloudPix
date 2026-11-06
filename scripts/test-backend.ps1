@@ -42,6 +42,7 @@ try {
     try {
         & .\mvnw.cmd "-Dmaven.repo.local=$MavenRepository" '-Dstyle.color=never' test
         if ($LASTEXITCODE -ne 0) { throw 'Backend tests failed. See CloudPix-backend/target/surefire-reports.' }
+        Write-Host "Coverage report: $(Join-Path $backend 'target/site/jacoco/index.html')"
     } finally { Pop-Location }
 } finally {
     if ($containerId) { & docker @dockerOptions stop $containerId | Out-Null }
