@@ -12,11 +12,17 @@ import java.time.Duration;
 @Component
 public class ImageDownloadClient {
     private final URI endpoint;
-    private final HttpClient client = HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
-            .followRedirects(HttpClient.Redirect.NEVER).build();
+    private final HttpClient client;
 
+    @org.springframework.beans.factory.annotation.Autowired
     public ImageDownloadClient(ImageKitProperties properties) {
+        this(properties, HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10))
+                .followRedirects(HttpClient.Redirect.NEVER).build());
+    }
+
+    ImageDownloadClient(ImageKitProperties properties, HttpClient client) {
         endpoint = URI.create(properties.urlEndpoint().endsWith("/") ? properties.urlEndpoint() : properties.urlEndpoint() + "/");
+        this.client = client;
     }
 
     public InputStream open(String url) {

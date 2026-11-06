@@ -200,4 +200,48 @@ class JwtServiceTest {
                 .signWith(signingKey)
                 .compact();
     }
+
+    @Test
+    void rejectsMissingSubjectsAndIssuedAtClaims() {
+        assertFalse(jwtService.isTokenValid(Jwts.builder().claim("type", "access")
+                .issuedAt(Date.from(Instant.now().minusSeconds(10))).expiration(Date.from(Instant.now().plusSeconds(60)))
+                .signWith(key).compact()));
+        assertFalse(jwtService.isTokenValid(Jwts.builder().subject(UUID.randomUUID().toString()).claim("type", "access")
+                .expiration(Date.from(Instant.now().plusSeconds(60))).signWith(key).compact()));
+    }
+
+    @Test
+    void refusesWrongTokenTypesDuringIdentityExtraction() {
+        String token = createToken(UUID.randomUUID().toString(), "refresh", Instant.now().minusSeconds(10), Instant.now().plusSeconds(60), key);
+        assertThrows(IllegalArgumentException.class, () -> jwtService.extractUserId(token));
+        assertThrows(IllegalArgumentException.class, () -> jwtService.extractUserId(null));
+        assertThrows(IllegalArgumentException.class, () -> jwtService.extractUserId(" "));
+        assertThrows(IllegalArgumentException.class, () -> jwtService.hashRefreshToken(null));
+    }
+
+    @Test
+    void refusesUnconfiguredOrWeakSigningKeys() {
+        for (String secret : new String[] { null, "", " ", "too-short" }) {
+            assertThrows(IllegalStateException.class, () -> new JwtService(new JwtProperties(secret, 60_000, 60_000)));
+        }
+    }
+
+    @Test
+    void refreshExpiryUsesTheConfiguredDuration() {
+        Instant before = Instant.now();
+        Instant expiry = jwtService.refreshTokenExpiry();
+        Instant after = Instant.now();
+        assertFalse(expiry.isBefore(before.plusMillis(604_800_000)));
+        assertFalse(expiry.isAfter(after.plusMillis(604_800_000)));
+    }
+
+    @Test
+    void refreshTokensAreUniqueAndNotAccessJwts() {
+        String first = jwtService.generateRefreshToken();
+        String second = jwtService.generateRefreshToken();
+        assertNotEquals(first, second);
+        assertFalse(jwtService.isTokenValid(first));
+        assertEquals(2, first.split("\\.").length);
+    }
+
 }
