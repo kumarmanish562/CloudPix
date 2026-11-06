@@ -42,19 +42,19 @@ export function SidebarNav({ user, onNavigate }: SidebarNavProps) {
 
   return (
     <div className="flex h-full flex-col">
-      <div className="border-b border-sidebar-border px-5 py-5">
+      <div className="border-b border-sidebar-border/70 px-6 py-6">
         <div className="flex items-center gap-3">
           <div className="flex size-9 items-center justify-center rounded-xl bg-primary/15 text-primary">
             <Image src="/logo2.svg" alt="logo" width={36} height={36} className="size-9 h-auto w-auto" />
           </div>
           <div className="min-w-0">
-            <p className="truncate text-sm font-semibold tracking-tight text-sidebar-foreground">CloudPix</p>
-            <p className="text-xs text-muted-foreground">Your photo space</p>
+            <p className="truncate text-[15px] font-semibold tracking-tight text-sidebar-foreground">CloudPix</p>
+            <p className="mt-0.5 text-[11px] tracking-wide text-muted-foreground">A HOME FOR YOUR MOMENTS</p>
           </div>
         </div>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3 py-4">
+      <nav className="flex-1 space-y-1.5 px-4 py-6">
         {navItems.map(({ href, label, icon: Icon }) => {
           const isActive = pathname === href || pathname.startsWith(`${href}/`);
 
@@ -64,10 +64,10 @@ export function SidebarNav({ user, onNavigate }: SidebarNavProps) {
               href={href}
               onClick={onNavigate}
               className={cn(
-                "flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition-colors",
+                "group flex items-center gap-3 rounded-xl px-3.5 py-3 text-[13px] font-medium transition-all duration-200",
                 isActive
-                  ? "bg-sidebar-accent text-sidebar-accent-foreground"
-                  : "text-muted-foreground hover:bg-sidebar-accent/60 hover:text-sidebar-foreground",
+                  ? "bg-white text-primary shadow-[0_3px_12px_-7px_rgba(42,34,80,0.45)] ring-1 ring-black/[0.035] dark:bg-sidebar-accent"
+                  : "text-muted-foreground hover:translate-x-0.5 hover:bg-sidebar-accent/70 hover:text-sidebar-foreground",
               )}
             >
               <Icon className="size-4 shrink-0" />
@@ -77,7 +77,7 @@ export function SidebarNav({ user, onNavigate }: SidebarNavProps) {
         })}
       </nav>
 
-      <div className="mt-auto space-y-3 border-t border-sidebar-border px-3 py-4">
+      <div className="mt-auto space-y-3 border-t border-sidebar-border/70 px-4 py-5">
         <StorageWidget />
 
         {user && (
