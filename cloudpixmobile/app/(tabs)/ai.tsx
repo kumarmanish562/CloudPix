@@ -490,3 +490,4 @@ const styles = StyleSheet.create({
     opacity: 0.5,
   },
 });
+
