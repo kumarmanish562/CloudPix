@@ -7,6 +7,7 @@ import {
   Archive,
   FolderOpen,
   Images,
+  LayoutDashboard,
   LogOut,
   Trash2,
   Heart,
@@ -22,6 +23,7 @@ import type { User } from "@/lib/api";
 import Image from "next/image";
 
 const navItems = [
+  { href: "/dashboard", label: "Dashboard", icon: LayoutDashboard },
   { href: "/photos", label: "Photos", icon: Images },
   { href: "/albums", label: "Albums", icon: FolderOpen },
   { href: "/favorites", label: "Favorites", icon: Heart },

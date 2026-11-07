@@ -65,6 +65,8 @@ class CloudPixWorkflowTest {
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content(body(Map.of("email", owner.email(), "password", "StrongPass123!")))).andExpect(status().isOk());
         mvc.perform(auth(get("/api/auth/me"), owner)).andExpect(jsonPath("$.id").value(owner.userId()));
+        mvc.perform(auth(get("/api/dashboard/summary"), owner)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.storageQuotaBytes").value(5368709120L));
 
         JsonNode photo = upload(owner, "holiday.png", IMAGE, false, 201);
         String id = photo.get("id").asText();

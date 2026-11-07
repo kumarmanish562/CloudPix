@@ -50,6 +50,27 @@ public interface PhotoRepository extends JpaRepository<Photo, UUID>, JpaSpecific
 
     long countByUserIdAndStatus(UUID userId, PhotoStatus status);
 
+    long countByUserIdAndFavoriteTrueAndStatus(UUID userId, PhotoStatus status);
+
+    long countByUserIdAndAiTransformTypeIsNotNullAndStatus(UUID userId, PhotoStatus status);
+
+    List<Photo> findTop6ByUserIdAndStatusOrderByCreatedAtDesc(UUID userId, PhotoStatus status);
+
+    @Query("""
+            SELECT p.mimeType, COUNT(p)
+            FROM Photo p
+            WHERE p.user.id = :userId AND p.status = 'ACTIVE' AND p.mimeType IS NOT NULL
+            GROUP BY p.mimeType
+            """)
+    List<Object[]> countByMimeType(UUID userId);
+
+    @Query("""
+            SELECT p FROM Photo p
+            WHERE p.user.id = :userId AND p.status = 'ACTIVE' AND p.createdAt >= :since
+            ORDER BY p.createdAt ASC
+            """)
+    List<Photo> findActivePhotosSince(UUID userId, java.time.Instant since);
+
     @Query("""
             SELECT COALESCE(SUM(p.sizeBytes), 0)
             FROM Photo p
