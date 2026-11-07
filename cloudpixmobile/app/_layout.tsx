@@ -46,10 +46,10 @@ export default function RootLayout() {
   useEffect(() => {
     if (isLoading) return;
 
-    const inAuthGroup = segments[0] === "(auth)";
+    const inAuthGroup = segments[0] === "(auth)" || segments[0] === "welcome";
 
     if (!user && !inAuthGroup) {
-      router.replace("/(auth)/login");
+      router.replace("/welcome");
     } else if (user && inAuthGroup) {
       router.replace("/(tabs)");
     }
@@ -91,9 +91,11 @@ export default function RootLayout() {
       <AuthContext.Provider value={authValue}>
         <StatusBar style="light" />
         <Stack screenOptions={{ headerShown: false, contentStyle: { backgroundColor: "#0f0b18" } }}>
+          <Stack.Screen name="welcome" options={{ headerShown: false }} />
           <Stack.Screen name="(auth)" options={{ headerShown: false }} />
           <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
           <Stack.Screen name="photo/[id]" options={{ presentation: "modal", headerShown: false }} />
+          <Stack.Screen name="album/[id]" options={{ headerShown: false }} />
         </Stack>
       </AuthContext.Provider>
     </QueryClientProvider>

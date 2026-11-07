@@ -95,8 +95,10 @@ export type Photo = {
 export type Album = {
   id: string;
   title: string;
+  description?: string | null;
   photoCount: number;
   coverThumbnailUrl: string | null;
+  createdAt?: string;
   updatedAt: string;
 };
 
@@ -109,9 +111,28 @@ export type DashboardSummary = {
   storageQuotaBytes: number;
   activeShares: number;
   emailVerified: boolean;
+  uploadTrends: Array<{
+    date: string;
+    count: number;
+    bytes: number;
+  }>;
+  formatDistribution: Array<{
+    format: string;
+    count: number;
+    percentage: number;
+  }>;
+  recentPhotos: Array<{
+    id: string;
+    fileName: string;
+    url: string;
+    thumbnailUrl: string;
+    createdAt: string;
+    aiTransformType: string | null;
+  }>;
 };
 
 export const api = {
+  // Auth
   login: (credentials: { email: string; password: string }) =>
     request<AuthResponse>("/auth/login", {
       method: "POST",
@@ -138,10 +159,14 @@ export const api = {
       body: JSON.stringify({ email }),
     }),
 
-  getPhotos: (page = 0, size = 20) =>
-    request<{ content: Photo[]; totalElements: number }>(
-      `/photos?page=${page}&size=${size}&status=ACTIVE`
-    ),
+  // Photos
+  getPhotos: (page = 0, size = 20, favorite?: boolean) => {
+    let query = `/photos?page=${page}&size=${size}&status=ACTIVE`;
+    if (favorite !== undefined) {
+      query += `&favorite=${favorite}`;
+    }
+    return request<{ content: Photo[]; totalElements: number }>(query);
+  },
 
   getPhoto: (id: string) => request<Photo>(`/photos/${id}`),
 
@@ -151,14 +176,85 @@ export const api = {
       body: JSON.stringify({ favorite }),
     }),
 
+  deletePhoto: (id: string) =>
+    request<void>(`/photos/${id}`, {
+      method: "DELETE",
+    }),
+
+  // Albums
   getAlbums: () => request<Album[]>("/albums"),
 
+  getAlbum: (id: string) => request<Album>(`/albums/${id}`),
+
+  createAlbum: (data: { title: string; description?: string }) =>
+    request<Album>("/albums", {
+      method: "POST",
+      body: JSON.stringify(data),
+    }),
+
+  deleteAlbum: (id: string) =>
+    request<void>(`/albums/${id}`, {
+      method: "DELETE",
+    }),
+
+  getAlbumPhotos: (id: string, page = 0, size = 24) =>
+    request<{ content: Photo[]; totalElements: number }>(
+      `/albums/${id}/photos?page=${page}&size=${size}`
+    ),
+
+  addPhotosToAlbum: (albumId: string, photoIds: string[]) =>
+    request<void>(`/albums/${albumId}/photos`, {
+      method: "POST",
+      body: JSON.stringify({ photoIds }),
+    }),
+
+  removePhotoFromAlbum: (albumId: string, photoId: string) =>
+    request<void>(`/albums/${albumId}/photos/${photoId}`, {
+      method: "DELETE",
+    }),
+
+  shareAlbum: (albumId: string, durationDays: number = 7) =>
+    request<{ shareToken: string; shareUrl: string; expiresAt: string }>(
+      `/albums/${albumId}/share`,
+      {
+        method: "POST",
+        body: JSON.stringify({ durationDays }),
+      }
+    ),
+
+  // AI Transforms
+  previewAiTransform: (photoId: string, payload: { type: string; prompt?: string }) =>
+    request<{ previewUrl: string; transformType: string }>(
+      `/photos/${photoId}/ai/preview`,
+      {
+        method: "POST",
+        body: JSON.stringify(payload),
+      }
+    ),
+
+  applyAiTransform: (photoId: string, payload: { type: string; prompt?: string }) =>
+    request<Photo>(`/photos/${photoId}/ai/apply`, {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  // Dashboard
   getDashboardSummary: () => request<DashboardSummary>("/dashboard/summary"),
 
+  // Health / Ping
+  ping: async (): Promise<boolean> => {
+    try {
+      const res = await fetch(`${API_URL}/auth/me`, { method: "HEAD" });
+      return res.status === 401 || res.status === 200;
+    } catch {
+      return false;
+    }
+  },
+
+  // Upload
   uploadPhoto: async (uri: string, fileName: string, mimeType: string) => {
     const token = await getAccessToken();
     const formData = new FormData();
-    // React Native FormData file object representation
     formData.append("file", {
       uri,
       name: fileName || "mobile-upload.jpg",
@@ -181,4 +277,3 @@ export const api = {
     return res.json();
   },
 };
-

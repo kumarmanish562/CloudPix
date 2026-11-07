@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,26 +9,33 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth-store";
-import { Sparkles } from "lucide-react-native";
+import { Cloud, ArrowLeft, Eye, EyeOff, Sparkles, Check, X } from "lucide-react-native";
 
 export default function RegisterScreen() {
+  const router = useRouter();
   const [displayName, setDisplayName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const { register } = useAuth();
 
+  const hasLength = password.length >= 8;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasDigit = /\d/.test(password);
+
   async function handleRegister() {
     if (!displayName.trim() || !email.trim() || !password) {
-      setError("Please fill in all fields");
+      setError("Please fill in all required fields");
       return;
     }
-    if (password.length < 8) {
+    if (!hasLength) {
       setError("Password must be at least 8 characters");
       return;
     }
@@ -40,6 +47,10 @@ export default function RegisterScreen() {
         email: email.trim(),
         password,
       });
+      router.push({
+        pathname: "/(auth)/verify-email",
+        params: { email: email.trim() },
+      });
     } catch (err: unknown) {
       setError(err instanceof Error ? err.message : "Registration failed");
     } finally {
@@ -48,192 +59,349 @@ export default function RegisterScreen() {
   }
 
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Sparkles size={28} color="#c4b5fd" />
-          </View>
-          <Text style={styles.title}>Join CloudPix</Text>
-          <Text style={styles.subtitle}>Create your private cloud photo library.</Text>
-        </View>
-
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Display name</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="Alex Smith"
-              placeholderTextColor="#6b7280"
-              value={displayName}
-              onChangeText={setDisplayName}
-            />
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Top Bar */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.push("/welcome")}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={20} color="#ffffff" />
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="alex@example.com"
-              placeholderTextColor="#6b7280"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
+          {/* Header */}
+          <View style={styles.header}>
+            <View style={styles.iconCircle}>
+              <Cloud size={30} color="#c084fc" />
+            </View>
+            <Text style={styles.title}>Create Account</Text>
+            <Text style={styles.subtitle}>
+              Start with 5 GB free encrypted cloud storage.
+            </Text>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password (min 8 chars)</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#6b7280"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
+
+          {/* Form */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>FULL NAME</Text>
+              <TextInput
+                style={styles.input}
+                value={displayName}
+                onChangeText={(val) => {
+                  setDisplayName(val);
+                  if (error) setError(null);
+                }}
+                placeholder="Jane Doe"
+                placeholderTextColor="#475569"
+                autoCapitalize="words"
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(val) => {
+                  setEmail(val);
+                  if (error) setError(null);
+                }}
+                placeholder="jane@example.com"
+                placeholderTextColor="#475569"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>PASSWORD</Text>
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  value={password}
+                  onChangeText={(val) => {
+                    setPassword(val);
+                    if (error) setError(null);
+                  }}
+                  placeholder="At least 8 characters"
+                  placeholderTextColor="#475569"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color="#94a3b8" />
+                  ) : (
+                    <Eye size={18} color="#94a3b8" />
+                  )}
+                </TouchableOpacity>
+              </View>
+
+              {/* Password strength indicators */}
+              {password.length > 0 && (
+                <View style={styles.criteriaRow}>
+                  <View style={styles.criteriaPill}>
+                    {hasLength ? (
+                      <Check size={12} color="#10b981" />
+                    ) : (
+                      <X size={12} color="#64748b" />
+                    )}
+                    <Text
+                      style={[
+                        styles.criteriaText,
+                        hasLength && styles.criteriaTextActive,
+                      ]}
+                    >
+                      8+ chars
+                    </Text>
+                  </View>
+                  <View style={styles.criteriaPill}>
+                    {hasUpper ? (
+                      <Check size={12} color="#10b981" />
+                    ) : (
+                      <X size={12} color="#64748b" />
+                    )}
+                    <Text
+                      style={[
+                        styles.criteriaText,
+                        hasUpper && styles.criteriaTextActive,
+                      ]}
+                    >
+                      Uppercase
+                    </Text>
+                  </View>
+                  <View style={styles.criteriaPill}>
+                    {hasDigit ? (
+                      <Check size={12} color="#10b981" />
+                    ) : (
+                      <X size={12} color="#64748b" />
+                    )}
+                    <Text
+                      style={[
+                        styles.criteriaText,
+                        hasDigit && styles.criteriaTextActive,
+                      ]}
+                    >
+                      Number
+                    </Text>
+                  </View>
+                </View>
+              )}
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleRegister}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <View style={styles.buttonContent}>
+                  <Text style={styles.buttonText}>Get Started</Text>
+                  <Sparkles size={16} color="#ffffff" />
+                </View>
+              )}
+            </TouchableOpacity>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleRegister}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Create Account</Text>
-            )}
-          </TouchableOpacity>
-
+          {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account?</Text>
+            <Text style={styles.footerText}>Already have an account? </Text>
             <Link href="/(auth)/login" asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}> Sign in</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.linkText}>Sign In</Text>
               </TouchableOpacity>
             </Link>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#0c0814",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#130e1f",
   },
   scroll: {
-    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  topBar: {
+    marginBottom: 20,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    alignItems: "center",
     justifyContent: "center",
-    padding: 24,
   },
   header: {
     alignItems: "center",
-    marginBottom: 28,
+    marginBottom: 24,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    backgroundColor: "rgba(167, 139, 250, 0.15)",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(147, 51, 234, 0.15)",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.3)",
-    justifyContent: "center",
+    borderColor: "rgba(168, 85, 247, 0.3)",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: "#ffffff",
-    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "#9ca3af",
-    marginTop: 6,
+    color: "#94a3b8",
     textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
   },
   errorBox: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
     borderWidth: 1,
     borderColor: "rgba(239, 68, 68, 0.3)",
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 20,
   },
   errorText: {
-    color: "#fca5a5",
+    color: "#f87171",
     fontSize: 13,
     textAlign: "center",
   },
   form: {
     gap: 16,
+    marginBottom: 28,
   },
   inputGroup: {
     gap: 6,
   },
   label: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#d1d5db",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#94a3b8",
+    letterSpacing: 0.8,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 15,
     color: "#ffffff",
+    fontSize: 15,
+  },
+  passwordWrapper: {
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    top: 14,
+    padding: 4,
+  },
+  criteriaRow: {
+    flexDirection: "row",
+    gap: 8,
+    marginTop: 6,
+  },
+  criteriaPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
+    borderRadius: 8,
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+  },
+  criteriaText: {
+    color: "#64748b",
+    fontSize: 11,
+  },
+  criteriaTextActive: {
+    color: "#10b981",
   },
   button: {
     backgroundColor: "#7c3aed",
     borderRadius: 14,
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
+    marginTop: 6,
     shadowColor: "#7c3aed",
-    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   buttonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 16,
   },
   footerText: {
-    color: "#9ca3af",
+    color: "#94a3b8",
     fontSize: 14,
   },
   linkText: {
-    color: "#a78bfa",
+    color: "#c084fc",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });
-

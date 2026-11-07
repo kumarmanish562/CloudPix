@@ -1,4 +1,4 @@
-import { useState } from "react";
+import React, { useState } from "react";
 import {
   View,
   Text,
@@ -9,14 +9,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   ScrollView,
+  SafeAreaView,
 } from "react-native";
-import { Link } from "expo-router";
+import { Link, useRouter } from "expo-router";
 import { useAuth } from "@/lib/auth-store";
-import { Sparkles } from "lucide-react-native";
+import { Cloud, ArrowLeft, Eye, EyeOff, Sparkles, KeyRound } from "lucide-react-native";
 
 export default function LoginScreen() {
+  const router = useRouter();
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -24,7 +27,7 @@ export default function LoginScreen() {
 
   async function handleLogin() {
     if (!email.trim() || !password) {
-      setError("Please fill in all fields");
+      setError("Please fill in both email and password");
       return;
     }
     setError(null);
@@ -38,182 +41,303 @@ export default function LoginScreen() {
     }
   }
 
+  function handleFillDemo() {
+    setEmail("tester@cloudpix.dev");
+    setPassword("CloudPix2026!");
+    setError(null);
+  }
+
   return (
-    <KeyboardAvoidingView
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scroll}>
-        <View style={styles.header}>
-          <View style={styles.iconCircle}>
-            <Sparkles size={28} color="#c4b5fd" />
-          </View>
-          <Text style={styles.title}>CloudPix</Text>
-          <Text style={styles.subtitle}>Welcome back. Sign in to your gallery.</Text>
-        </View>
-
-        {error && (
-          <View style={styles.errorBox}>
-            <Text style={styles.errorText}>{error}</Text>
-          </View>
-        )}
-
-        <View style={styles.form}>
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email address</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="you@example.com"
-              placeholderTextColor="#6b7280"
-              autoCapitalize="none"
-              keyboardType="email-address"
-              value={email}
-              onChangeText={setEmail}
-            />
+    <SafeAreaView style={styles.safeArea}>
+      <KeyboardAvoidingView
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        style={styles.container}
+      >
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+        >
+          {/* Top Bar with Back Button */}
+          <View style={styles.topBar}>
+            <TouchableOpacity
+              style={styles.backButton}
+              onPress={() => router.push("/welcome")}
+              activeOpacity={0.7}
+            >
+              <ArrowLeft size={20} color="#ffffff" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.demoPill}
+              onPress={handleFillDemo}
+              activeOpacity={0.7}
+            >
+              <KeyRound size={13} color="#f59e0b" />
+              <Text style={styles.demoText}>Auto-Fill Demo</Text>
+            </TouchableOpacity>
           </View>
 
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Password</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="••••••••"
-              placeholderTextColor="#6b7280"
-              secureTextEntry
-              value={password}
-              onChangeText={setPassword}
-            />
+          {/* Logo & Header */}
+          <View style={styles.header}>
+            <View style={styles.iconCircle}>
+              <Cloud size={30} color="#c084fc" />
+            </View>
+            <Text style={styles.title}>Welcome Back</Text>
+            <Text style={styles.subtitle}>
+              Sign in to access your cloud vault and AI transformations.
+            </Text>
           </View>
 
-          <TouchableOpacity
-            style={[styles.button, loading && styles.buttonDisabled]}
-            onPress={handleLogin}
-            disabled={loading}
-          >
-            {loading ? (
-              <ActivityIndicator color="#fff" />
-            ) : (
-              <Text style={styles.buttonText}>Sign In</Text>
-            )}
-          </TouchableOpacity>
+          {error && (
+            <View style={styles.errorBox}>
+              <Text style={styles.errorText}>{error}</Text>
+            </View>
+          )}
 
+          {/* Form Fields */}
+          <View style={styles.form}>
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>EMAIL ADDRESS</Text>
+              <TextInput
+                style={styles.input}
+                value={email}
+                onChangeText={(val) => {
+                  setEmail(val);
+                  if (error) setError(null);
+                }}
+                placeholder="name@example.com"
+                placeholderTextColor="#475569"
+                keyboardType="email-address"
+                autoCapitalize="none"
+                autoCorrect={false}
+              />
+            </View>
+
+            <View style={styles.inputGroup}>
+              <View style={styles.passwordLabelRow}>
+                <Text style={styles.label}>PASSWORD</Text>
+              </View>
+              <View style={styles.passwordWrapper}>
+                <TextInput
+                  style={[styles.input, styles.passwordInput]}
+                  value={password}
+                  onChangeText={(val) => {
+                    setPassword(val);
+                    if (error) setError(null);
+                  }}
+                  placeholder="••••••••••••"
+                  placeholderTextColor="#475569"
+                  secureTextEntry={!showPassword}
+                  autoCapitalize="none"
+                />
+                <TouchableOpacity
+                  style={styles.eyeButton}
+                  onPress={() => setShowPassword(!showPassword)}
+                  activeOpacity={0.7}
+                >
+                  {showPassword ? (
+                    <EyeOff size={18} color="#94a3b8" />
+                  ) : (
+                    <Eye size={18} color="#94a3b8" />
+                  )}
+                </TouchableOpacity>
+              </View>
+            </View>
+
+            <TouchableOpacity
+              style={[styles.button, loading && styles.buttonDisabled]}
+              onPress={handleLogin}
+              disabled={loading}
+              activeOpacity={0.85}
+            >
+              {loading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <View style={styles.buttonContent}>
+                  <Text style={styles.buttonText}>Sign In</Text>
+                  <Sparkles size={16} color="#ffffff" />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
+
+          {/* Footer Link */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Don&apos;t have an account?</Text>
+            <Text style={styles.footerText}>Don't have an account? </Text>
             <Link href="/(auth)/register" asChild>
-              <TouchableOpacity>
-                <Text style={styles.linkText}> Create account</Text>
+              <TouchableOpacity activeOpacity={0.7}>
+                <Text style={styles.linkText}>Create Account</Text>
               </TouchableOpacity>
             </Link>
           </View>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
+  safeArea: {
+    flex: 1,
+    backgroundColor: "#0c0814",
+  },
   container: {
     flex: 1,
-    backgroundColor: "#130e1f",
   },
   scroll: {
-    flexGrow: 1,
+    paddingHorizontal: 24,
+    paddingTop: 16,
+    paddingBottom: 32,
+  },
+  topBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 28,
+  },
+  backButton: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    alignItems: "center",
     justifyContent: "center",
-    padding: 24,
+  },
+  demoPill: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    backgroundColor: "rgba(245, 158, 11, 0.12)",
+    borderWidth: 1,
+    borderColor: "rgba(245, 158, 11, 0.3)",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  demoText: {
+    color: "#fbbf24",
+    fontSize: 12,
+    fontWeight: "600",
   },
   header: {
     alignItems: "center",
-    marginBottom: 32,
+    marginBottom: 28,
   },
   iconCircle: {
-    width: 60,
-    height: 60,
-    borderRadius: 20,
-    backgroundColor: "rgba(167, 139, 250, 0.15)",
+    width: 68,
+    height: 68,
+    borderRadius: 34,
+    backgroundColor: "rgba(147, 51, 234, 0.15)",
     borderWidth: 1,
-    borderColor: "rgba(167, 139, 250, 0.3)",
-    justifyContent: "center",
+    borderColor: "rgba(168, 85, 247, 0.3)",
     alignItems: "center",
+    justifyContent: "center",
     marginBottom: 16,
   },
   title: {
-    fontSize: 28,
-    fontWeight: "700",
+    fontSize: 26,
+    fontWeight: "800",
     color: "#ffffff",
-    letterSpacing: -0.5,
+    marginBottom: 8,
   },
   subtitle: {
     fontSize: 14,
-    color: "#9ca3af",
-    marginTop: 6,
+    color: "#94a3b8",
     textAlign: "center",
+    lineHeight: 20,
+    paddingHorizontal: 16,
   },
   errorBox: {
-    backgroundColor: "rgba(239, 68, 68, 0.15)",
+    backgroundColor: "rgba(239, 68, 68, 0.12)",
     borderWidth: 1,
     borderColor: "rgba(239, 68, 68, 0.3)",
-    borderRadius: 14,
+    borderRadius: 12,
     padding: 12,
     marginBottom: 20,
   },
   errorText: {
-    color: "#fca5a5",
+    color: "#f87171",
     fontSize: 13,
     textAlign: "center",
   },
   form: {
-    gap: 16,
+    gap: 18,
+    marginBottom: 28,
   },
   inputGroup: {
     gap: 6,
   },
+  passwordLabelRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
   label: {
-    fontSize: 13,
-    fontWeight: "500",
-    color: "#d1d5db",
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#94a3b8",
+    letterSpacing: 0.8,
   },
   input: {
-    backgroundColor: "rgba(255, 255, 255, 0.06)",
+    backgroundColor: "rgba(255, 255, 255, 0.04)",
     borderWidth: 1,
-    borderColor: "rgba(255, 255, 255, 0.12)",
+    borderColor: "rgba(255, 255, 255, 0.1)",
     borderRadius: 14,
     paddingHorizontal: 16,
     paddingVertical: 14,
-    fontSize: 15,
     color: "#ffffff",
+    fontSize: 15,
+  },
+  passwordWrapper: {
+    position: "relative",
+  },
+  passwordInput: {
+    paddingRight: 48,
+  },
+  eyeButton: {
+    position: "absolute",
+    right: 14,
+    top: 14,
+    padding: 4,
   },
   button: {
     backgroundColor: "#7c3aed",
     borderRadius: 14,
-    paddingVertical: 15,
+    paddingVertical: 16,
     alignItems: "center",
-    marginTop: 8,
+    justifyContent: "center",
+    marginTop: 6,
     shadowColor: "#7c3aed",
-    shadowOpacity: 0.4,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
     shadowRadius: 10,
-    elevation: 4,
+    elevation: 6,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
+  buttonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
   buttonText: {
     color: "#ffffff",
     fontSize: 16,
-    fontWeight: "600",
+    fontWeight: "700",
   },
   footer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    marginTop: 16,
   },
   footerText: {
-    color: "#9ca3af",
+    color: "#94a3b8",
     fontSize: 14,
   },
   linkText: {
-    color: "#a78bfa",
+    color: "#c084fc",
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
   },
 });
-
