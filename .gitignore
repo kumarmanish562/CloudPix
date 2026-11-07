@@ -1,0 +1,54 @@
+# ==========================================
+# CloudPix Monorepo Root .gitignore
+# Single Unified .gitignore for all projects
+# ==========================================
+
+# IDE & Editor Settings
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+
+# Operating System Files
+.DS_Store
+Thumbs.db
+
+# Dependencies
+node_modules/
+**/node_modules/
+
+# Build Outputs & Generated Artifacts
+target/
+**/target/
+.next/
+**/.next/
+.next-*/
+**/.next-*/
+.expo/
+**/.expo/
+dist/
+**/dist/
+build/
+**/build/
+
+# Environment Variables & Secrets (Keep example files committed)
+.env
+.env.*
+.env.local
+!.env.example
+
+# Test Reports & Execution Logs
+playwright-report/
+**/playwright-report/
+test-results/
+**/test-results/
+coverage/
+**/coverage/
+*.log
+**/*.log
+
+# TypeScript & Cache
+*.tsbuildinfo
+next-env.d.ts
+
