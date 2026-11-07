@@ -19,7 +19,8 @@ class AuthServiceTest {
     private final PasswordEncoder passwords = mock(PasswordEncoder.class);
     private final JwtService jwt = mock(JwtService.class);
     private final RefreshTokenRotationService rotation = mock(RefreshTokenRotationService.class);
-    private final AuthService service = new AuthService(users, tokens, authentication, passwords, jwt, rotation);
+    private final EmailVerificationService emailVerification = mock(EmailVerificationService.class);
+    private final AuthService service = new AuthService(users, tokens, authentication, passwords, jwt, rotation, emailVerification);
 
     @Test
     void emptyRefreshRequestsNeverReachTheDatabase() {

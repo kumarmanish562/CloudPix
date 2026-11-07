@@ -463,6 +463,38 @@ class CloudPixWorkflowTest {
         mvc.perform(auth(get("/api/photos/memories"), owner)).andExpect(status().isOk());
     }
 
+    @Test
+    void emailVerificationLifecycleWithOtpAndToken() throws Exception {
+        Session owner = register();
+        mvc.perform(auth(get("/api/auth/me"), owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(false));
+
+        Map<String, Object> tokenRow = jdbc.queryForMap(
+                "SELECT token, code FROM email_verification_tokens WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                UUID.fromString(owner.userId())
+        );
+        String code = (String) tokenRow.get("code");
+        String token = (String) tokenRow.get("token");
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("email", owner.email(), "code", "000000"))))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("email", owner.email(), "code", code))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true));
+
+        mvc.perform(auth(get("/api/auth/me"), owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true));
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("token", token))))
+                .andExpect(status().isBadRequest());
+    }
+
     private Session register() throws Exception {
         String email = UUID.randomUUID() + "@example.com";
         JsonNode node = result(post("/api/auth/register").contentType(MediaType.APPLICATION_JSON)
