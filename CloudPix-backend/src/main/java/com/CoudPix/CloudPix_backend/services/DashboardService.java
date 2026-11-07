@@ -123,7 +123,7 @@ public class DashboardService {
         for (Object[] row : rows) {
             String mime = (String) row[0];
             long count = ((Number) row[1]).longValue();
-            String formatName = mime.replace("image/", "").toUpperCase(Locale.ROOT);
+            String formatName = mime != null ? mime.replace("image/", "").toUpperCase(Locale.ROOT) : "OTHER";
             double pct = Math.round((double) count / totalPhotos * 1000.0) / 10.0;
             result.add(new FormatDistributionDto(formatName, count, pct));
         }
@@ -141,7 +141,7 @@ public class DashboardService {
                         p.getUrl(),
                         p.getThumbnailUrl() != null ? p.getThumbnailUrl() : p.getUrl(),
                         p.getCreatedAt().toString(),
-                        p.getAiTransformType()
+                        p.getAiTransformType() != null ? p.getAiTransformType().name() : null
                 ))
                 .toList();
     }

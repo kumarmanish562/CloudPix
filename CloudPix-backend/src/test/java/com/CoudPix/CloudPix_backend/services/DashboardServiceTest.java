@@ -1,6 +1,8 @@
 package com.CoudPix.CloudPix_backend.services;
 
+import com.CoudPix.CloudPix_backend.domain.Photo;
 import com.CoudPix.CloudPix_backend.domain.User;
+import com.CoudPix.CloudPix_backend.dto.AiTransformType;
 import com.CoudPix.CloudPix_backend.dto.DashboardSummaryResponse;
 import com.CoudPix.CloudPix_backend.dto.PhotoStatus;
 import com.CoudPix.CloudPix_backend.repositories.AlbumRepository;
@@ -10,6 +12,7 @@ import com.CoudPix.CloudPix_backend.repositories.UserRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -60,7 +63,19 @@ class DashboardServiceTest {
                 new Object[]{"image/jpeg", 30L},
                 new Object[]{"image/png", 12L}
         ));
-        when(photoRepository.findTop6ByUserIdAndStatusOrderByCreatedAtDesc(userId, PhotoStatus.ACTIVE)).thenReturn(List.of());
+        Photo recentPhoto = Photo.builder()
+                .id(UUID.randomUUID())
+                .user(testUser)
+                .fileName("portrait.jpg")
+                .url("https://ik.imagekit.io/test/portrait.jpg")
+                .thumbnailUrl("https://ik.imagekit.io/test/portrait_thumb.jpg")
+                .imagekitFileId("file_123")
+                .sizeBytes(2048L)
+                .status(PhotoStatus.ACTIVE)
+                .createdAt(Instant.now())
+                .aiTransformType(AiTransformType.RETOUCH)
+                .build();
+        when(photoRepository.findTop6ByUserIdAndStatusOrderByCreatedAtDesc(userId, PhotoStatus.ACTIVE)).thenReturn(List.of(recentPhoto));
 
         DashboardSummaryResponse summary = service.getDashboardSummary(userId);
 
@@ -75,6 +90,9 @@ class DashboardServiceTest {
         assertEquals(2, summary.formatDistribution().size());
         assertEquals("JPEG", summary.formatDistribution().get(0).format());
         assertEquals(71.4, summary.formatDistribution().get(0).percentage());
+        assertEquals(1, summary.recentPhotos().size());
+        assertEquals("RETOUCH", summary.recentPhotos().get(0).aiTransformType());
+        assertEquals("portrait.jpg", summary.recentPhotos().get(0).fileName());
     }
 }
 
