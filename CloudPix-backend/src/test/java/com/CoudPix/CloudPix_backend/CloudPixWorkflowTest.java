@@ -65,6 +65,8 @@ class CloudPixWorkflowTest {
         mvc.perform(post("/api/auth/login").contentType(MediaType.APPLICATION_JSON)
                 .content(body(Map.of("email", owner.email(), "password", "StrongPass123!")))).andExpect(status().isOk());
         mvc.perform(auth(get("/api/auth/me"), owner)).andExpect(jsonPath("$.id").value(owner.userId()));
+        mvc.perform(auth(get("/api/dashboard/summary"), owner)).andExpect(status().isOk())
+                .andExpect(jsonPath("$.storageQuotaBytes").value(5368709120L));
 
         JsonNode photo = upload(owner, "holiday.png", IMAGE, false, 201);
         String id = photo.get("id").asText();
@@ -461,6 +463,38 @@ class CloudPixWorkflowTest {
                 .andExpect(jsonPath("$.url").value("https://ik.imagekit.io/test/verified.png"));
         performJson(owner, "/api/photos", payload, 409);
         mvc.perform(auth(get("/api/photos/memories"), owner)).andExpect(status().isOk());
+    }
+
+    @Test
+    void emailVerificationLifecycleWithOtpAndToken() throws Exception {
+        Session owner = register();
+        mvc.perform(auth(get("/api/auth/me"), owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(false));
+
+        Map<String, Object> tokenRow = jdbc.queryForMap(
+                "SELECT token, code FROM email_verification_tokens WHERE user_id = ? ORDER BY created_at DESC LIMIT 1",
+                UUID.fromString(owner.userId())
+        );
+        String code = (String) tokenRow.get("code");
+        String token = (String) tokenRow.get("token");
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("email", owner.email(), "code", "000000"))))
+                .andExpect(status().isBadRequest());
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("email", owner.email(), "code", code))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true));
+
+        mvc.perform(auth(get("/api/auth/me"), owner))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.emailVerified").value(true));
+
+        mvc.perform(post("/api/auth/verify-email").contentType(MediaType.APPLICATION_JSON)
+                .content(body(Map.of("token", token))))
+                .andExpect(status().isBadRequest());
     }
 
     private Session register() throws Exception {

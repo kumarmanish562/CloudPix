@@ -42,6 +42,10 @@ class MigrationUpgradeTest {
                 }
                 sql.executeUpdate("delete from albums");
                 assertEquals(0, count(sql, "album_shares"));
+                try (ResultSet rs = sql.executeQuery("select email_verified from users where id = '" + user + "'")) {
+                    assertTrue(rs.next());
+                    assertFalse(rs.getBoolean(1));
+                }
             }
         } finally {
             // This test owns a unique schema, including its Flyway history.

@@ -15,6 +15,8 @@ public interface AlbumRepository extends JpaRepository<Album, UUID> {
 
     List<Album> findByUserIdOrderByUpdatedAtDesc(UUID userId);
 
+    long countByUserId(UUID userId);
+
     Optional<Album> findByIdAndUserId(UUID id, UUID userId);
 
     @Query("""

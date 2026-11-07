@@ -13,7 +13,8 @@ import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 @Configuration
 @EnableConfigurationProperties({
         JwtProperties.class,
-        CorsProperties.class
+        CorsProperties.class,
+        MailProperties.class
 })
 public class AppConfig {
 

@@ -42,6 +42,6 @@ public class UserService {
     }
 
     public UserResponse toUserResponse(User user) {
-        return new UserResponse(user.getId(), user.getEmail(), user.getDisplayName());
+        return new UserResponse(user.getId(), user.getEmail(), user.getDisplayName(), user.isEmailVerified());
     }
 }

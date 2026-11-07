@@ -30,6 +30,7 @@ public class AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
     private final RefreshTokenRotationService refreshTokenRotationService;
+    private final EmailVerificationService emailVerificationService;
 
     public AuthService(
             UserRepository userRepository,
@@ -37,7 +38,8 @@ public class AuthService {
             AuthenticationManager authenticationManager,
             PasswordEncoder passwordEncoder,
             JwtService jwtService,
-            RefreshTokenRotationService refreshTokenRotationService
+            RefreshTokenRotationService refreshTokenRotationService,
+            EmailVerificationService emailVerificationService
     ) {
         this.userRepository = userRepository;
         this.refreshTokenRepository = refreshTokenRepository;
@@ -45,6 +47,7 @@ public class AuthService {
         this.passwordEncoder = passwordEncoder;
         this.jwtService = jwtService;
         this.refreshTokenRotationService = refreshTokenRotationService;
+        this.emailVerificationService = emailVerificationService;
     }
 
     @Transactional
@@ -66,6 +69,8 @@ public class AuthService {
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        emailVerificationService.createAndSendVerification(savedUser);
 
         return createAuthResponse(savedUser);
     }
@@ -161,7 +166,8 @@ public class AuthService {
         UserResponse userResponse = new UserResponse(
                 user.getId(),
                 user.getEmail(),
-                user.getDisplayName()
+                user.getDisplayName(),
+                user.isEmailVerified()
         );
 
         return new AuthResponse(
@@ -197,7 +203,8 @@ public class AuthService {
         UserResponse userResponse = new UserResponse(
                 userId,
                 email,
-                displayName
+                displayName,
+                user.isEmailVerified()
         );
 
         return new AuthResponse(

@@ -1,0 +1,691 @@
+{
+  "info": {
+    "_postman_id": "c1a0d84f-7f8e-4b2a-9f5b-cloudpix0001",
+    "name": "CloudPix API Collection",
+    "description": "Complete production API test collection for CloudPix backend. Supports automatic token extraction, chained requests, authentication, email verification, photo uploads, AI transforms, albums, sharing, and dashboard metrics.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:8080/api",
+      "type": "string"
+    },
+    {
+      "key": "token",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "refreshToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "photoId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "albumId",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shareToken",
+      "value": "",
+      "type": "string"
+    },
+    {
+      "key": "shareId",
+      "value": "",
+      "type": "string"
+    }
+  ],
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "1. Authentication & Email Verification",
+      "item": [
+        {
+          "name": "Register User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('token', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    console.log('Saved accessToken and refreshToken');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\",\n  \"displayName\": \"CloudPix Tester\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/register",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "register"]
+            }
+          }
+        },
+        {
+          "name": "Login User",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('token', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "    console.log('Login successful. Updated tokens.');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"password\": \"SecurePass123!\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/login",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "login"]
+            }
+          }
+        },
+        {
+          "name": "Get Current User Profile (/me)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/auth/me",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "me"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email via 6-digit Code",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\",\n  \"code\": \"123456\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"]
+            }
+          }
+        },
+        {
+          "name": "Verify Email via Link Token",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"token\": \"paste-verification-token-here\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/verify-email",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "verify-email"]
+            }
+          }
+        },
+        {
+          "name": "Resend Email Verification Code",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"user@example.com\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/resend-verification",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "resend-verification"]
+            }
+          }
+        },
+        {
+          "name": "Refresh Access Token",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 200) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('token', json.accessToken);",
+                  "    pm.collectionVariables.set('refreshToken', json.refreshToken);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/refresh",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "refresh"]
+            }
+          }
+        },
+        {
+          "name": "Logout",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"refreshToken\": \"{{refreshToken}}\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/auth/logout",
+              "host": ["{{baseUrl}}"],
+              "path": ["auth", "logout"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "2. Dashboard & Analytics",
+      "item": [
+        {
+          "name": "Get Dashboard Summary & Metrics",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/dashboard/summary",
+              "host": ["{{baseUrl}}"],
+              "path": ["dashboard", "summary"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "3. Photos & Gallery",
+      "item": [
+        {
+          "name": "Upload Photo (Multipart)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('photoId', json.id);",
+                  "    console.log('Saved photoId: ' + json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "file",
+                  "type": "file",
+                  "description": "Select an image file (PNG/JPEG) from your computer"
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/upload?allowDuplicate=false",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "upload"],
+              "query": [
+                { "key": "allowDuplicate", "value": "false" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "List Active Photos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos?page=0&size=20&status=ACTIVE&sort=newest",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos"],
+              "query": [
+                { "key": "page", "value": "0" },
+                { "key": "size", "value": "20" },
+                { "key": "status", "value": "ACTIVE" },
+                { "key": "sort", "value": "newest" }
+              ]
+            }
+          }
+        },
+        {
+          "name": "Get Photo by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Update Photo (Favorite & Tags)",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"favorite\": true,\n  \"tags\": [\"travel\", \"summer\", \"vacation\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Find Duplicate Photos",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos/duplicates",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "duplicates"]
+            }
+          }
+        },
+        {
+          "name": "Get Memories (On This Day)",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos/memories",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "memories"]
+            }
+          }
+        },
+        {
+          "name": "Get All User Tags",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos/tags",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "tags"]
+            }
+          }
+        },
+        {
+          "name": "Download Original Photo Bytes",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "Move Photo to Trash",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"TRASH\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}"]
+            }
+          }
+        },
+        {
+          "name": "Permanently Delete Photo",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "4. AI Studio Transforms",
+      "item": [
+        {
+          "name": "Preview AI Background Removal",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"REMOVE_BACKGROUND\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}/ai/preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}", "ai", "preview"]
+            }
+          }
+        },
+        {
+          "name": "Preview AI Change Background (Prompt)",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"CHANGE_BACKGROUND\",\n  \"prompt\": \"Tropical beach with golden sunset\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}/ai/preview",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}", "ai", "preview"]
+            }
+          }
+        },
+        {
+          "name": "Apply and Save AI Transformation",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"type\": \"REMOVE_BACKGROUND\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/photos/{{photoId}}/ai/apply",
+              "host": ["{{baseUrl}}"],
+              "path": ["photos", "{{photoId}}", "ai", "apply"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "5. Albums & Collections",
+      "item": [
+        {
+          "name": "Create Album",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('albumId', json.id);",
+                  "    console.log('Saved albumId: ' + json.id);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"title\": \"Summer Vacation 2026\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/albums",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums"]
+            }
+          }
+        },
+        {
+          "name": "List Albums",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/albums",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums"]
+            }
+          }
+        },
+        {
+          "name": "Get Album by ID",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}"]
+            }
+          }
+        },
+        {
+          "name": "Add Photos to Album",
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"photoIds\": [\"{{photoId}}\"]\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}/photos",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}", "photos"]
+            }
+          }
+        },
+        {
+          "name": "Download Album as ZIP",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}/download",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}", "download"]
+            }
+          }
+        },
+        {
+          "name": "Delete Album",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "6. Album Sharing",
+      "item": [
+        {
+          "name": "Create Share Link (168 Hours = 7 Days)",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "if (pm.response.code === 201) {",
+                  "    var json = pm.response.json();",
+                  "    pm.collectionVariables.set('shareToken', json.token);",
+                  "    pm.collectionVariables.set('shareId', json.id);",
+                  "    console.log('Saved shareToken and shareId');",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              { "key": "Content-Type", "value": "application/json" }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"hours\": 168\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}/shares",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}", "shares"]
+            }
+          }
+        },
+        {
+          "name": "List Active Shares for Album",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}/shares",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}", "shares"]
+            }
+          }
+        },
+        {
+          "name": "Public Shared Album View (No Auth Needed)",
+          "request": {
+            "auth": { "type": "noauth" },
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/shared/{{shareToken}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["shared", "{{shareToken}}"]
+            }
+          }
+        },
+        {
+          "name": "Revoke Share Link",
+          "request": {
+            "method": "DELETE",
+            "url": {
+              "raw": "{{baseUrl}}/albums/{{albumId}}/shares/{{shareId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["albums", "{{albumId}}", "shares", "{{shareId}}"]
+            }
+          }
+        }
+      ]
+    },
+    {
+      "name": "7. Library & Storage Info",
+      "item": [
+        {
+          "name": "Get Storage Usage",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/library/storage",
+              "host": ["{{baseUrl}}"],
+              "path": ["library", "storage"]
+            }
+          }
+        },
+        {
+          "name": "List ImageKit Cloud Assets",
+          "request": {
+            "method": "GET",
+            "url": {
+              "raw": "{{baseUrl}}/library/imagekit-assets",
+              "host": ["{{baseUrl}}"],
+              "path": ["library", "imagekit-assets"]
+            }
+          }
+        }
+      ]
+    }
+  ]
+}
+

@@ -6,6 +6,48 @@ export type User = {
   id: string;
   email: string;
   displayName: string;
+  emailVerified?: boolean;
+};
+
+export type UploadTrend = {
+  date: string;
+  count: number;
+  bytes: number;
+};
+
+export type FormatDistribution = {
+  format: string;
+  count: number;
+  percentage: number;
+};
+
+export type RecentPhoto = {
+  id: string;
+  fileName: string;
+  url: string;
+  thumbnailUrl: string;
+  createdAt: string;
+  aiTransformType: string | null;
+};
+
+export type DashboardSummary = {
+  totalPhotos: number;
+  totalAlbums: number;
+  totalFavorites: number;
+  totalAiTransformed: number;
+  storageUsedBytes: number;
+  storageQuotaBytes: number;
+  activeShares: number;
+  emailVerified: boolean;
+  uploadTrends: UploadTrend[];
+  formatDistribution: FormatDistribution[];
+  recentPhotos: RecentPhoto[];
+};
+
+export type VerifyEmailPayload = {
+  token?: string;
+  code?: string;
+  email?: string;
 };
 
 export type AuthResponse = {
@@ -301,5 +343,19 @@ export const api = {
     request<Photo[]>("/library/import", {
       method: "POST",
       body: JSON.stringify({ imagekitFileIds }),
+    }),
+
+  getDashboardSummary: () => request<DashboardSummary>("/dashboard/summary"),
+
+  verifyEmail: (payload: VerifyEmailPayload) =>
+    request<User>("/auth/verify-email", {
+      method: "POST",
+      body: JSON.stringify(payload),
+    }),
+
+  resendVerification: (email: string) =>
+    request<{ message: string }>("/auth/resend-verification", {
+      method: "POST",
+      body: JSON.stringify({ email }),
     }),
 };
